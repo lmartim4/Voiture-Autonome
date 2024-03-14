@@ -1,4 +1,0 @@
-customtkinter==5.2.2
-darkdetect==0.8.0
-packaging==23.2
-rpi_hardware_pwm==0.2.1

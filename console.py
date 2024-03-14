@@ -13,7 +13,7 @@ GRAY  = "\33[90m"
 UNDERLINE = "\33[4m"
 
 # Header of the CSV log file
-HEADER = "timestamp/pointcloud/steer/speed\n"
+HEADER = "timestamp/speed_sensor/rear_distance/battery_voltage/steer/speed/pointcloud\n"
 
 
 class Console:
@@ -25,8 +25,6 @@ class Console:
             path (str, optional): logs folder path. Defaults to "logs".
         """
 
-        os.system("clear")
-
         timestamp = datetime.now().strftime("%Y-%m-%d/%H-%M-%S.csv")
         self.filename = os.path.join(path, *timestamp.split("/"))
 
@@ -34,8 +32,8 @@ class Console:
         if not os.path.exists(os.path.dirname(self.filename)):
             os.makedirs(os.path.dirname(self.filename))
 
-        self.log_file = open(self.filename, "+a", encoding="utf8")
-        self.log_file.write(HEADER)
+        self.file = open(self.filename, "+a", encoding="utf8")
+        self.file.write(HEADER)
 
         self.counter = 0
 
@@ -46,19 +44,18 @@ class Console:
         Appends data to the log file and saves it every 10 new lines.
 
         Args:
-            data (List[Any]): data to be logged in
-                the format [pointcloud, steer, speed].
+            data (List[Any]): data to be logged in.
         """
 
         timestamp = datetime.timestamp(datetime.now())
-        row = f"{timestamp}/{data[0]}/{data[1]}/{data[2]}\n"
+        row = "{}/{}/{}/{}/{}/{}/{}\n".format(timestamp, *data)
 
-        self.log_file.write(row)
+        self.file.write(row)
         self.counter += 1
 
-        if self.counter >= 10:
-            self.log_file.close()
-            self.log_file = open(self.filename, "+a", encoding="utf8")
+        if self.counter > 10:
+            self.file.close()
+            self.file = open(self.filename, "+a", encoding="utf8")
 
             self.counter = 0
 
@@ -72,11 +69,11 @@ class Console:
 
         timestamp = datetime.now().strftime("%H:%M:%S")
 
-        print(f"{GREEN}{timestamp} {BLUE}[INFO]{NORMAL} {message}")
+        print(f"\r{GREEN}{timestamp} {BLUE}[INFO]{NORMAL} {message}")
 
     def close(self) -> None:
         """
         Properly closes log file.
         """
 
-        self.log_file.close()
+        self.file.close()
