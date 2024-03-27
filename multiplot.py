@@ -2,12 +2,29 @@ import sys
 
 import json
 
+import warnings
+
 import numpy as np
 import pandas as pd
+
+from datetime import datetime
 
 from matplotlib import pyplot as plt
 from matplotlib.widgets import Slider
 
+from matplotlib.backend_bases import KeyEvent
+
+
+WINDOW_SIZE = 8.0  # Seconds
+
+NORMAL = "\33[0m"
+GREEN = "\33[32m"
+BLUE  = "\33[34m"
+
+UNDERLINE = "\33[4m"
+
+
+warnings.filterwarnings("ignore")
 
 plt.style.use(
     ["seaborn-v0_8-whitegrid", "seaborn-v0_8-muted", {
@@ -24,6 +41,12 @@ plt.style.use(
 )
 
 
+def info(message: str) -> None:
+    timestamp = datetime.now().strftime("%H:%M:%S")
+
+    print(f"\r{GREEN}{timestamp} {BLUE}[INFO]{NORMAL} {message}")
+
+
 def read_log(filename: str) -> pd.DataFrame:
     df = pd.read_csv(filename, delimiter="/")
 
@@ -34,7 +57,7 @@ def read_log(filename: str) -> pd.DataFrame:
     return df
 
 
-def draw_vehicle(ax) -> None:
+def draw_vehicle(ax: plt.Axes) -> None:
     vehicle = np.array(
         [[ 0.00000000,  0.0951087 ],
          [ 0.07500000,  0.09103261],
@@ -81,28 +104,17 @@ def draw_vehicle(ax) -> None:
 
 
 def main(filename: str) -> None:
+    info(f"Reading {UNDERLINE}{filename}{NORMAL}")
+
     df = read_log(filename)
+
+    info("Use arrow keys to change time and press CTRL to take large steps")
 
     timestamps = df["timestamp"].to_numpy()
     timestamps -= timestamps[0]
 
-    scale = (len(timestamps) - 1) / timestamps[-1]
-
     angles = np.linspace(0, 2 * np.pi, 360)
     cos, sin = np.cos(angles), np.sin(angles)
-
-    points = np.zeros((0, 2))
-
-    for distances in df["pointcloud"].to_numpy():
-        x = -distances * cos
-        y =  distances * sin
-
-        tmp = np.concatenate(
-            (x[:, np.newaxis], y[:, np.newaxis]), axis=1)
-
-        points = np.append(points, tmp, axis=0)
-
-        del tmp
 
     fig = plt.figure(figsize=(12, 6))
 
@@ -136,9 +148,9 @@ def main(filename: str) -> None:
     ax1.set_xlim([ -2.50,  2.50])
     ax1.set_ylim([ -1.00,  4.00])
     ax2.set_ylim([ -0.05,  1.05])
-    ax3.set_ylim([-18.90, 18.90])
-    ax4.set_ylim([  4.68,  7.32])
-    ax5.set_ylim([  0.00, 31.50])
+    ax3.set_ylim([-22.00, 22.00])
+    ax4.set_ylim([  6.95,  8.05])
+    ax5.set_ylim([ -1.50, 31.50])
 
     slider = Slider(
         ax=fig.add_axes([0.065, 0.025, 0.35, 0.03]),
@@ -150,7 +162,7 @@ def main(filename: str) -> None:
     )
 
     style = {"marker": "o", "linestyle": "none", "color": "#4878cf"}
-    lidar, = ax1.plot(points[:, 0], points[:, 1], **style)
+    lidar, = ax1.plot(np.zeros(360), np.zeros(360), **style)
 
     draw_vehicle(ax1)
 
@@ -188,27 +200,71 @@ def main(filename: str) -> None:
 
 
     def update(value: float) -> None:
-        index = int(scale * value)
+        index = np.argmin(np.abs(timestamps - value))
 
-        if index == 0:
-            lidar.set_xdata(points[:, 0])
-            lidar.set_ydata(points[:, 1])
+        data = df.iloc[index]
 
-        else:
-            data = df.iloc[index]
-
-            lidar.set_xdata(-data["pointcloud"] * cos)
-            lidar.set_ydata( data["pointcloud"] * sin)
+        lidar.set_xdata(-data["pointcloud"] * cos)
+        lidar.set_ydata( data["pointcloud"] * sin)
 
         for line in lines:
             line.set_xdata([value, value])
 
+        if timestamps[-1] <= WINDOW_SIZE:
+            ini_timestamp = timestamps[ 0]
+            end_timestamp = timestamps[-1]
+
+        else:
+            value = max(value, timestamps[ 0] + 0.5 * WINDOW_SIZE)
+            value = min(value, timestamps[-1] - 0.5 * WINDOW_SIZE)
+
+            ini_timestamp = value - 0.5 * WINDOW_SIZE
+            end_timestamp = value + 0.5 * WINDOW_SIZE
+
+        for ax in [ax2, ax3, ax4, ax5]:
+            ax.set_xlim(
+                [ini_timestamp - 0.05 * WINDOW_SIZE,
+                 end_timestamp + 0.05 * WINDOW_SIZE]
+            )
+
         fig.canvas.draw_idle()
 
 
+    def on_press(event: KeyEvent) -> None:
+        index = np.argmin(np.abs(timestamps - slider.val))
+
+        if event.key == "left":
+            index -= 1
+        if event.key == "right":
+            index += 1
+
+        if event.key == "ctrl+left":
+            index -= 10
+        if event.key == "ctrl+right":
+            index += 10
+
+        index = np.clip(index, 0, len(timestamps) - 1)
+
+        slider.set_val(timestamps[index])
+
+        update(timestamps[index])
+
+
+    update(0.0)
+
     slider.on_changed(update)
 
-    plt.tight_layout()
+    fig.canvas.mpl_connect("key_press_event", on_press)
+
+    plt.subplots_adjust(
+        top=0.944,
+        bottom=0.088,
+        left=0.021,
+        right=0.988,
+        hspace=0.953,
+        wspace=0.2
+    )
+
     plt.show()
 
 
@@ -216,10 +272,9 @@ if __name__ == "__main__":
     try:
         filename = sys.argv[1]
     except IndexError:
-        filename = "00-19-17.csv"
+        filename = "logs/18-30-17.csv"
 
     try:
-        print(f"Reading {filename}")
         main(filename)
     except FileNotFoundError:
-        print(f"{filename} not found")
+        info(f"{UNDERLINE}{filename}{NORMAL} not found")
