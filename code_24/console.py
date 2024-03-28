@@ -1,5 +1,7 @@
 import os
 
+import pyperclip
+
 from typing import Any, List
 
 from datetime import datetime
@@ -17,7 +19,7 @@ HEADER = "timestamp/speed_sensor/rear_distance/battery_voltage/steer/speed/point
 
 
 class Console:
-    def __init__(self, path: str = "logs") -> None:
+    def __init__(self, path: str = "../logs") -> None:
         """
         Creates the log file using the code execution timestamp.
 
@@ -38,6 +40,8 @@ class Console:
         self.counter = 0
 
         self.info(f"Data stored in {UNDERLINE}{self.filename}{NORMAL}")
+        pyperclip.copy(f"python multiplot.py \"{self.filename}\"")
+        self.info(f"Multiplot command copied to clipboard\n")
 
     def log(self, data: List[Any]) -> None:
         """

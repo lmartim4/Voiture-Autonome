@@ -14,6 +14,8 @@ from matplotlib.widgets import Slider
 
 from matplotlib.backend_bases import KeyEvent
 
+from constants import *
+
 
 WINDOW_SIZE = 8.0  # Seconds
 
@@ -104,16 +106,17 @@ def draw_vehicle(ax: plt.Axes) -> None:
 
 
 def main(filename: str) -> None:
-    info(f"Reading {UNDERLINE}{filename}{NORMAL}")
+    info(f"Reading {UNDERLINE}{filename}{NORMAL}\n")
 
     df = read_log(filename)
 
-    info("Use arrow keys to change time and press CTRL to take large steps")
+    info("Use arrow keys to change time")
+    info("Press CTRL to take large steps")
 
     timestamps = df["timestamp"].to_numpy()
     timestamps -= timestamps[0]
 
-    angles = np.linspace(0, 2 * np.pi, 360)
+    angles = np.deg2rad(np.arange(0, 360) - LIDAR_HEADING)
     cos, sin = np.cos(angles), np.sin(angles)
 
     fig = plt.figure(figsize=(12, 6))
@@ -134,8 +137,8 @@ def main(filename: str) -> None:
     ax4.set_title("battery")
     ax5.set_title("ultrassonic")
 
-    ax1.set_xlabel("x [m]")
-    ax1.set_ylabel("y [m]")
+    ax1.set_xlabel("y [m]")
+    ax1.set_ylabel("x [m]")
 
     for ax in [ax2, ax3, ax4, ax5]:
         ax.set_xlabel("t [s]")
@@ -145,7 +148,7 @@ def main(filename: str) -> None:
     ax4.set_ylabel("voltage [V]")
     ax5.set_ylabel("distance [cm]")
 
-    ax1.set_xlim([ -2.50,  2.50])
+    ax1.set_xlim([  2.50, -2.50])
     ax1.set_ylim([ -1.00,  4.00])
     ax2.set_ylim([ -0.05,  1.05])
     ax3.set_ylim([-22.00, 22.00])
@@ -158,7 +161,7 @@ def main(filename: str) -> None:
         valmin=0,
         valmax=timestamps[-1],
         valinit=0,
-        valfmt="%.2f s"
+        valfmt=" %.2f s"
     )
 
     style = {"marker": "o", "linestyle": "none", "color": "#4878cf"}
@@ -204,8 +207,8 @@ def main(filename: str) -> None:
 
         data = df.iloc[index]
 
-        lidar.set_xdata(-data["pointcloud"] * cos)
-        lidar.set_ydata( data["pointcloud"] * sin)
+        lidar.set_xdata(-data["pointcloud"] * sin)
+        lidar.set_ydata( data["pointcloud"] * cos)
 
         for line in lines:
             line.set_xdata([value, value])

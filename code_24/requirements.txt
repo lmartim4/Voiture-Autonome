@@ -2,7 +2,8 @@ customtkinter==5.2.2
 matplotlib==3.7.4
 numpy==1.24.4
 pandas==2.2.1
+pynput==1.7.6
+pyperclip==1.8.2
 pyserial==3.5
-rpi_hardware_pwm==0.2.1
 rplidar-roboticia==0.9.5
 scipy==1.10.1

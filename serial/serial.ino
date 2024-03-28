@@ -42,14 +42,18 @@ void loop() {
   setRegister(sensorAddress, resultRegister);
   rearDistance = readData(sensorAddress, 2);
 
-  batteryVoltage = analogRead(batterySensor) * 7.2 / 1023.0;
+  batteryVoltage = analogRead(batterySensor) * 9.1 / 1023.0;
 
   Serial.print(speedValue);
   Serial.print("/");
   Serial.print(rearDistance);
   Serial.print("/");
   Serial.println(batteryVoltage);
-  delay(20);
+  delay(10);
+
+  speedValue -= 0.01;
+  if (speedValue < 0.0)
+    speedValue = 0.0;
 }
 
 
