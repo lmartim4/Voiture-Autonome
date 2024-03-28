@@ -125,5 +125,7 @@ Ainsi, il n'est pas nécessaire de spécifier si le LiDAR est connecté au port 
 En cas de doutes, n'hésitez pas à envoyer un message !
 
 > Filipe **LACERDA**
+>
 > filipe.lacerda@ensta-paris.fr
+>
 > +33 7 82 74 86 81
