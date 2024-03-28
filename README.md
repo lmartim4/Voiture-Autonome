@@ -1,6 +1,7 @@
 # Voiture Autonome
 
 ![Raspberry Pi](https://img.shields.io/badge/-RaspberryPi-C51A4A?style=for-the-badge&logo=Raspberry-Pi)
+![Arduino](https://img.shields.io/badge/-Arduino-00979D?style=for-the-badge&logo=Arduino&logoColor=white)
 ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
 ![NumPy](https://img.shields.io/badge/numpy-%23013243.svg?style=for-the-badge&logo=numpy&logoColor=white)
 
@@ -118,3 +119,15 @@ Appuyez sur `CTRL+O` pour enregistrer et `CTRL+X` pour quitter l'éditeur de tex
 Les valeurs `idVendor` et `idProduct` peuvent être trouvées en exécutant la commande `dmesg`, mais il y a une forte probabilité qu'elles soient les mêmes que celles de la commande ci-dessus.
 
 Ainsi, il n'est pas nécessaire de spécifier si le LiDAR est connecté au port `ttyUSB0` ou `ttyUSB1`, par exemple, évitant les erreurs où le port change pendant l'exécution du code.
+
+# Contact
+
+En cas de doutes, n'hésitez pas à envoyer un message !
+
+>>>
+Filipe **LACERDA**
+
+filipe.lacerda@ensta-paris.fr
+
++33 7 82 74 86 81
+>>>
