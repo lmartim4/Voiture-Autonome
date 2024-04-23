@@ -15,7 +15,7 @@
 * [Calibration des actionneurs](#calibration-des-actionneurs)
 * [Test de communication avec l'Arduino](#test-de-communication-avec-larduino)
 * [Exécution du code](#exécution-du-code)
-  * [Fichiers associés](#fichiers-associcés-2)
+  * [Fichiers associés](#fichiers-associés-2)
   * [Commande dans le terminal](#commande-dans-le-terminal-2)
 * [Analyse du *log*](#analyse-du-log)
 * [Détails de l'algorithme](#détails-de-lalgorithme)
