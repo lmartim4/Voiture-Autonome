@@ -15,7 +15,7 @@
 * [Calibration des actionneurs](#calibration-des-actionneurs)
 * [Test de communication avec l'Arduino](#test-de-communication-avec-larduino)
 * [Exécution du code](#exécution-du-code)
-  * [Fichiers associés](#fichiers-associc3a9s-2)
+  * [Fichiers associés](#fichiers-associcés-2)
   * [Commande dans le terminal](#commande-dans-le-terminal-2)
 * [Analyse du *log*](#analyse-du-log)
 * [Détails de l'algorithme](#détails-de-lalgorithme)
@@ -111,15 +111,15 @@ Maintenant que tout est correctement préparé, on attache les ceintures ! 🏁
 
 ## Fichiers associés
 
-📁 `console.py` est le code responsable de gérer les messages imprimés dans le terminal et de créer et gérer les *logs* de chaque exécution du code principal. Ce code n'est pas exécuté directement, mais utilisé par `main.py`. Lorsqu'un objet de la classe `Console` est instancié, un dossier `YYYY-MM-DD` avec la date du test est créé (s'il n'existe pas déjà) et un fichier `HH-MM-SS.csv` à l'intérieur où toutes les données du test ou de la course sont stockées.
+📁 `console.py` est le code responsable de gérer les messages imprimés dans le terminal et de créer et gérer les *logs* de chaque exécution du code principal. Ce code n'est pas exécuté directement, mais utilisé par `main.py`.
 
-📁 `constants.py` est le code responsable de stocker toutes les constantes qui contrôlent le comportement du véhicule. Ce code n'est pas exécuté directement, mais utilisé par d'autres fichiers. Certaines valeurs sont modifiées automatiquement lorsque la calibration des actionneurs est réalisée, minimisant l'effort et maximisant l'intégration du projet.
+📁 `constants.py` est le code responsable de stocker toutes les constantes qui contrôlent le comportement du véhicule. Ce code n'est pas exécuté directement, mais utilisé par d'autres fichiers. Certaines valeurs sont modifiées automatiquement lorsque la calibration des actionneurs est réalisée, minimisant l'effort.
 
 📁 `control.py` est le code responsable de définir les lois de contrôle du véhicule à partir des données sensorielles. On aura une session plus loin pour expliquer en détail les lois de direction et de vitesse. Ce code n'est pas exécuté directement, mais utilisé par `main.py`.
 
 📁 `core.py` est le code responsable de définir certaines structures de base qui seront utiles dans d'autres parties du projet, telles qu'un contrôleur PWM et un gestionnaire de communication série. Ce code n'est pas exécuté directement, mais utilisé par d'autres fichiers.
 
-📁 `main.py` est le code responsable de réaliser toute la routine d'initialisation des capteurs et actionneurs, le contrôle du véhicule pendant la course et la fermeture correcte de toutes les structures initialisées. Il unit les autres composants du projet. En exécutant ce code, le véhicule sera correctement initialisé, entrant dans une routine d'attente jusqu'à ce que le signal GO soit donné pour le début de la course. Pour arrêter le véhicule, il suffit d'appuyer sur `CTRL+C`, ce qui ferme les structures initialisées. Deux touches sont utilisées pour éviter les arrêts accidentels du véhicule.
+📁 `main.py` est le code responsable de réaliser toute la routine d'initialisation des capteurs et actionneurs, le contrôle du véhicule pendant la course et la fermeture correcte de toutes les structures initialisées. Il unit les autres composants du projet. En exécutant ce code, le véhicule sera correctement initialisé, entrant dans une routine d'attente jusqu'à ce que le signal GO soit donné pour le début de la course.
 
 ## Commande dans le terminal
 
@@ -127,7 +127,7 @@ Maintenant que tout est correctement préparé, on attache les ceintures ! 🏁
 python main.py
 ```
 
-Appuyez sur `ENTER` pour démarrer et sur `CTRL+C` pour arrêter le code.
+Appuyez sur `ENTER` pour démarrer et sur `CTRL+C` pour arrêter le code. Deux touches sont utilisées pour éviter les arrêts accidentels du véhicule.
 
 ⚠️ **Important :** la commande exacte pour analyser le *log* généré après la fin de la course sera copiée dans le presse-papiers (*clipboard*).
 
@@ -147,7 +147,7 @@ Il suffit de coller la commande copiée dans le presse-papiers (*clipboard*).
 python multiplot.py "../logs/YYYY-MM-DD/HH-MM-SS.csv"
 ```
 
-Remarquez que `YYYY-MM-DD` représente l'année, le mois et le jour, tandis que `HH-MM-SS` représente l'heure, la minute et la seconde où le *log* a été généré. Il sera unique pour chaque exécution et garantit que les *logs* ne se chevauchent pas.
+Remarquez que `YYYY-MM-DD` représente l'année, le mois et le jour, tandis que `HH-MM-SS` représente l'heure, la minute et la seconde où le *log* a été généré. Il sera unique pour chaque course et garantit que les *logs* ne se chevauchent pas.
 
 Pour modifier le moment dans le temps des graphiques, utilisez le *slider* en bas à gauche. Pour un contrôle plus précis, utilisez les flèches du clavier pour passer itération par itération. Appuyez sur la touche `CTRL` tout en utilisant les flèches du clavier pour augmenter la taille du pas.
 
