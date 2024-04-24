@@ -161,7 +161,9 @@ TODO
 
 ## Mesure du lidar
 
-La mesure du lidar se compose d'un vecteur de 360 positions de nombres flottants où l'indice représente l'angle en degrés dans le repère du lidar et la valeur allouée à cette position correspond à la distance respective en mètres. Par exemple, l'élément à la position 90 équivaut à la distance mesurée sur le côté gauche du lidar (pas nécessairement à gauche de la voiture). Notez que les angles sont mesurés dans le sens antihoraire.
+La mesure du lidar se compose d'un vecteur de 360 positions de nombres flottants où l'indice représente l'angle en degrés dans le repère du lidar et la valeur allouée à cette position correspond à la distance respective en mètres. Par exemple, l'élément à la position 90 équivaut à la distance mesurée sur le côté gauche du lidar (pas nécessairement à gauche de la voiture).
+
+❗️**Notez** que les angles sont mesurés dans le sens antihoraire.
 
 Le module `rplidar` possède la fonction `iter_scans()` qui permet d'itérer sur les balayages du lidar. Il est à noter que chaque balayage contiendra les distances mesurées pour un petit intervalle angulaire, de sorte que nous devons regrouper plusieurs de ces balayages pour composer une mesure du lidar. Lorsque le vecteur de distances comporte plus de 60 points non nuls, il est alors considéré que la mesure est suffisante pour progresser dans le code.
 
@@ -183,19 +185,19 @@ Les constantes `ANGLE_SCALE_FACTOR` et `MAX_ANGLE_TO_AVOID_CORNER` contrôlent l
 
 Ainsi, on peut calculer l'angle de direction corrigé $\alpha$. Cependant, l'angle de braquage effectif des roues $\delta$ sera une fonction de $\alpha$. Cette fonction $f$ est définie dans `STEER_FACTOR` par une carte de points interpolés linéairement.
 
-$$\delta(\alpha) = \text{sign}(\alpha) \cdot f(\,|\alpha|\,)$$
+$$\delta(\alpha) = \text{sign}(\alpha) \cdot f(|\alpha|)$$
 
-⚠️ **Important :** un angle de braquage positif indique que la voiture doit tourner à gauche, tandis qu'une valeur négative indique que la voiture doit tourner à droite.
+⚠️ **Important :** un angle de braquage positif indique que la voiture doit tourner à gauche et une valeur négative à droite.
 
 ## Loi de vitesse
 
 Avec le braquage $\delta$ calculé, il est temps de passer à la vitesse. Un petit cône sera filtré dans la région frontale du véhicule afin de calculer sa distance frontale $d_f$. La vitesse $v$ sera une fonction de $d_f$ et de $\delta$ de la manière suivante :
 
-$$v(d_f, \delta) = \kappa + (1-\kappa) \cdot g(d_f) \cdot h(\,|\delta|\,)$$
+$$v(d_f, \delta) = \kappa + (1-\kappa) \cdot g(d_f) \cdot h(|\delta|)$$
 
 où $\kappa$ est une constante qui détermine l'agressivité de la direction. Plus proche de 1, moins la voiture freinera dans les virages, mais le risque de perdre le contrôle est également plus élevé. Les fonctions $g$ et $h$ sont définies respectivement dans `SPEED_FACTOR_DIST` et `SPEED_FACTOR_ANG` à l'aide de cartes de points interpolés linéairement.
 
-Remarquez que la fonction $h$ vise à accélérer dans les lignes droites (petit braquage) et à freiner encore plus dans les virages, augmentant la réactivité du véhicule.
+❗️**Remarquez** que la fonction $h$ vise à accélérer dans les lignes droites (petit braquage) et à freiner encore plus dans les virages, augmentant la réactivité du véhicule.
 
 ## Interpolation linéaire
 
