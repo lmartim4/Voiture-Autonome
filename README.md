@@ -154,9 +154,9 @@ Pour modifier le moment dans le temps des graphiques, utilisez le *slider* en ba
 
 L'architecture du code principal peut être abstraite en 3 parties : initialisation, exécution et terminaison.
 
-Le dictionnaire appelé `interface` contient les objets qui contrôlent le lidar, chacun des PWM et la communication série. Ces 4 objets ont été associés à un seul dictionnaire pour faciliter l'accès à ces éléments lorsque d'autres fonctions en ont besoin, de sorte qu'il suffit de les instancier une seule fois et que la référence des objets est utilisée en permanence.
+Le dictionnaire `interface` contient l'objet qui contrôle le lidar, les objets qui contrôlent chacun des PWM et l'objet qui gère la communication série. Ces 4 objets ont été associés à un seul dictionnaire pour faciliter l'accès à ces éléments lorsque d'autres fonctions en ont besoin, de sorte qu'il suffit de les instancier une seule fois et que la référence des objets est utilisée en permanence.
 
-La communication série contient un petit code qui vérifie de manière récursive si cette même communication fonctionne correctement. En cas de problème de communication pendant la course, le code identifiera simplement que l'Arduino n'est plus disponible et enverra des valeurs fictives pour ne pas arrêter le contrôle de la voiture.
+La communication série contient un petit code qui vérifie de manière récursive si cette même communication fonctionne correctement. En cas de problème pendant la course, le code identifiera simplement que l'Arduino n'est plus disponible et enverra des valeurs fictives pour ne pas arrêter le contrôle de la voiture.
 
 ⚠️ **Important :** comme le lidar prend environ 1 seconde pour commencer à renvoyer des mesures, une stratégie a été adoptée pour l'initialiser avant de donner le signal de départ, ce qui réduit considérablement la latence.
 
@@ -222,7 +222,7 @@ $$f(x_i) = y_i \qquad i=1,2,\dots,n \qquad f(x > x_n) = y_n$$
 $$x \in [x_i, x_{i+1}] \Rightarrow f(x) = y_i + (y_{i+1} - y_i) \cdot \dfrac{x - x_i}{x_{i+1} - x_i}$$
 
 ![figure 5](images/5.png)
-**Figure 5.** visualisation des cartes mentionnées.
+**Figure 5.** visualisation des fonctions mentionnées.
 
 ## Détection de la marche arrière
 
@@ -235,7 +235,7 @@ Pour vérifier la présence d'un obstacle frontal, une zone de vérification rec
 
 Si la voiture roule plus vite, il est nécessaire d'augmenter la distance de vérification en raison du léger délai qui existe dans le freinage total du véhicule. La longueur varie selon la fonction mappée dans `LENGTH_FACTOR`.
 
-Si un nombre minimum `MIN_POINTS_TO_TRIGGER` de points se trouve dans cette zone rectangulaire, on conclut qu'il y a un obstacle frontal. Cependant, cet obstacle pourrait être simplement une voiture qui a freiné brièvement puis a rapidement dégagé le chemin. Pour éviter l'activation inutile de la marche arrière, il est nécessaire de vérifier si cet obstacle est resté pendant un minimum de `REVERSE_CHECK_COUNTER` itérations consécutives. Si tel est le cas, la marche arrière est alors enclenchée.
+Si un nombre minimum de points `MIN_POINTS_TO_TRIGGER` se trouve dans cette zone rectangulaire, on conclut qu'il y a un obstacle frontal. Cependant, cet obstacle pourrait être simplement une voiture qui a freiné brièvement puis a rapidement dégagé le chemin. Pour éviter l'activation inutile de la marche arrière, il est nécessaire de vérifier si cet obstacle est resté pendant un minimum de itérations consécutives `REVERSE_CHECK_COUNTER`. Si tel est le cas, la marche arrière est alors enclenchée.
 
 ## Activation de la marche arrière
 
@@ -244,22 +244,22 @@ Lors de l'activation de la marche arrière, le code effectuera les actions suiva
 1. arrêter le lidar pour éviter les erreurs d'obstruction du *buffer* ;
 2. notifier l'ESC (contrôleur du moteur) qu'il doit fonctionner en mode inverse ;
 3. vérifier si l'arrière est dégagé pour effectuer la marche arrière ;
-4. décider du côté sur lequel les roues tourneront lors de la marche arrière ;
+4. décider du côté sur lequel les roues tourneront ;
 5. réactiver le lidar tout en effectuant correctement la marche arrière.
 
 ⚠️ **Important :** la procédure de notification de l'ESC varie d'un modèle à l'autre, il s'agira donc probablement d'un point de divergence entre les codes des deux voitures. Le `time.sleep(0.03)` peut être insuffisant pour notifier correctement l'ESC, il peut donc être nécessaire d'augmenter légèrement cette valeur.
 
 La vérification avant de reculer était une exigence pour l'homologation et consiste à attendre tant qu'il y a un obstacle à l'arrière. En augmentant le `range` du `for`, on augmente l'intervalle maximal d'attente avant que la marche arrière ne soit autorisée. Pour l'homologation, il peut être intéressant d'utiliser une grande valeur, mais une petite valeur pour les courses elles-mêmes.
 
-Les roues seront tournées en marche arrière afin d'améliorer le positionnement du véhicule après la marche arrière. Le côté est choisi en observant les côtés du véhicule. Par exemple, si le côté droit est plus dégagé (distance moyenne plus grande) que le côté gauche, les roues seront tournées vers la gauche et vice versa.
+Les roues seront tournées afin d'améliorer le positionnement du véhicule après la marche arrière. Le côté est choisi en observant les côtés du véhicule. Par exemple, si le côté droit est plus dégagé (distance moyenne plus grande) que le côté gauche, les roues seront tournées vers la gauche et vice versa.
 
-Pendant que le véhicule recule, il vérifie également si l'espace reste libre pour pouvoir continuer. Si un obstacle obstrue l'arrière du véhicule, la marche arrière est interrompue et la voiture reprend sa marche en avant.
+Pendant que la voiture recule, il vérifie également si l'espace reste libre pour pouvoir continuer. Si un obstacle obstrue l'arrière du véhicule, la marche arrière est interrompue et la voiture reprend sa marche en avant.
 
 ⚠️ **Important :** le lidar prend environ 1 seconde pour s'initialiser après arrêter. Ainsi, il est intéressant de profiter de ce temps d'initialisation pour commencer à reculer.
 
 # Points d'amélioration
 
-La performance lors de la compétition CoVAPSy 2024 était excellente, mais voici quelques points qui pourraient être améliorés :
+La performance lors de la compétition CoVAPSy 2024 était excellente, mais voici quelques points qui pourraient être améliorés pour le prochain projet :
 
 - Déviation plus efficace des obstacles fixes
 - Identification du sens correct de la piste pour éviter de rouler à contresens

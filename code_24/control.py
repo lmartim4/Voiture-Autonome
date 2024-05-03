@@ -96,8 +96,8 @@ def check_reverse(data: Dict[str, Any]) -> bool:
 
         return True
 
-    HEIGHT = lerp(data["serial"][0], HEIGHT_FACTOR)
-    MAX_DIST = np.sqrt(0.25 * WIDTH**2 + HEIGHT**2)
+    LENGTH = lerp(data["serial"][0], LENGTH_FACTOR)
+    MAX_DIST = np.sqrt(0.25 * WIDTH**2 + LENGTH**2)
 
     mask = data["updated"] & (data["lidar"] < MAX_DIST)
 
@@ -107,7 +107,7 @@ def check_reverse(data: Dict[str, Any]) -> bool:
     x = distances * np.cos(angles)
     y = distances * np.sin(angles)
 
-    mask = (np.abs(y) <= 0.5 * WIDTH) & (0.0 <= x) & (x <= HEIGHT)
+    mask = (np.abs(y) <= 0.5 * WIDTH) & (0.0 <= x) & (x <= LENGTH)
 
     if np.count_nonzero(mask) > 5:
         reverse_counter += 1
