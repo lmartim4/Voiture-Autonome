@@ -31,7 +31,7 @@ void setup() {
     digitalPinToInterrupt(speedSensor), interruption, RISING);
 
   Serial.begin(115200); 
-  Serial.setTimeout(1);
+  Serial.setTimeout(0.1);
 }
 
 
@@ -76,7 +76,12 @@ int readData(int address, int numBytes) {
   int result = 0;
 
   Wire.requestFrom(address, numBytes);
-  while (Wire.available() < 2) {}
+  for (int i = 0; i < 500 && Wire.available() < 2; i++) {}
+
+  if (Wire.available() < 2) {
+    Wire.begin();
+    return 20;
+  }
 
   result = Wire.read() * 256;
   return result + Wire.read();
