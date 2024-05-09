@@ -60,7 +60,7 @@ pip install -r requirements.txt
 ## Configuration
 
 - Dans le fichier `core.py`, indiquez à la ligne 10 si le RPi utilisé est le 5 ou non.
-- Dans le fichier `main.py`, indiquez dans les lignes 38 à 41 les paramètres du matériel utilisé, le *baudrate*, etc.
+- Dans le fichier `main.py`, indiquez dans les lignes 49 à 52 les paramètres du matériel utilisé, le *baudrate*, etc.
 - Dans le fichier `constants.py`, indiquez à la ligne 10 l'orientation du LiDAR (angle dans le repère du LiDAR où se trouve l'avant du véhicule).
 
 # Calibration des actionneurs
@@ -194,12 +194,12 @@ Maintenant que le nuage de points a été correctement traité, on trouvera l'an
 Supposons qu'un coin a été trouvé à droite du véhicule, `r_angle`, alors on déplacera l'angle de direction vers la gauche afin d'éviter de heurter l'obstacle. Dans ce cas, ce déplacement serait donné par :
 
 ```python
-delta = -ANGLE_SCALE_FACTOR * (MAX_ANGLE_TO_AVOID_CORNER - r_angle)
+delta = -AVOID_CORNER_SCALE_FACTOR * (AVOID_CORNER_MAX_ANGLE - r_angle)
 ```
 
-Les constantes `ANGLE_SCALE_FACTOR` et `MAX_ANGLE_TO_AVOID_CORNER` contrôlent le facteur d'augmentation de ce déplacement et la taille de la perturbation angulaire.
+Les constantes `AVOID_CORNER_SCALE_FACTOR` et `AVOID_CORNER_MAX_ANGLE` contrôlent le facteur d'augmentation de ce déplacement et la taille de la perturbation angulaire.
 
-Ainsi, on peut calculer l'angle de direction corrigé $\alpha$. Cependant, l'angle de braquage effectif des roues $\delta$ sera une fonction de $\alpha$. Cette fonction $f$ est définie dans `STEER_FACTOR` par une carte de points interpolés linéairement.
+Ainsi, on peut calculer l'angle de direction corrigé $\alpha$. Cependant, l'angle de braquage effectif des roues $\delta$ sera une fonction de $\alpha$. Cette fonction $f$ est définie dans `LERP_MAP_STEER` par une carte de points interpolés linéairement.
 
 $$\delta(\alpha) = \text{sign}(\alpha) \cdot f(|\alpha|)$$
 
@@ -211,7 +211,7 @@ Avec le braquage $\delta$ calculé, il est temps de passer à la vitesse. Un pet
 
 $$v(d_f, \delta) = \kappa + (1-\kappa) \cdot g(d_f) \cdot h(|\delta|)$$
 
-où $\kappa$ est une constante qui détermine l'agressivité de la direction. Plus proche de 1, moins la voiture freinera dans les virages, mais le risque de perdre le contrôle est également plus élevé. Les fonctions $g$ et $h$ sont définies respectivement dans `SPEED_FACTOR_DIST` et `SPEED_FACTOR_ANG` à l'aide de cartes de points interpolés linéairement.
+où $\kappa$ est une constante qui détermine l'agressivité de la direction. Plus proche de 1, moins la voiture freinera dans les virages, mais le risque de perdre le contrôle est également plus élevé. Les fonctions $g$ et $h$ sont définies respectivement dans `LERP_MAP_SPEED_DIST` et `LERP_MAP_SPEED_ANGL` à l'aide de cartes de points interpolés linéairement.
 
 ❗️**Remarquez** que la fonction $h$ vise à accélérer dans les lignes droites (petit braquage) et à freiner encore plus dans les virages, augmentant la réactivité du véhicule.
 
@@ -233,7 +233,7 @@ L'activation de la marche arrière peut se produire dans deux scénarios distinc
 
 Pour vérifier la présence d'un obstacle frontal, une zone de vérification rectangulaire est utilisée plutôt qu'un secteur circulaire, il est donc nécessaire de convertir la mesure du lidar de coordonnées polaires en coordonnées cartésiennes. Cette zone aura une largeur fixe et approximativement égale à la largeur de la voiture, cependant sa longueur variera avec la vitesse du véhicule.
 
-Si la voiture roule plus vite, il est nécessaire d'augmenter la distance de vérification en raison du léger délai qui existe dans le freinage total du véhicule. La longueur varie selon la fonction mappée dans `LENGTH_FACTOR`.
+Si la voiture roule plus vite, il est nécessaire d'augmenter la distance de vérification en raison du léger délai qui existe dans le freinage total du véhicule. La longueur varie selon la fonction mappée dans `LERP_MAP_LENGTH`.
 
 Si un nombre minimum de points `MIN_POINTS_TO_TRIGGER` se trouve dans cette zone rectangulaire, on conclut qu'il y a un obstacle frontal. Cependant, cet obstacle pourrait être simplement une voiture qui a freiné brièvement puis a rapidement dégagé le chemin. Pour éviter l'activation inutile de la marche arrière, il est nécessaire de vérifier si cet obstacle est resté pendant un minimum de itérations consécutives `REVERSE_CHECK_COUNTER`. Si tel est le cas, la marche arrière est alors enclenchée.
 

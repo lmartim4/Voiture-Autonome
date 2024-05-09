@@ -7,52 +7,69 @@ import numpy as np
 #                                                   #
 #===================================================#
 
-LIDAR_HEADING = 90
+LIDAR_HEADING =  90   # int: degrees [°]
 
-FIELD_OF_VIEW = 120
+FIELD_OF_VIEW = 120   # int: degrees [°]
 
 CONVOLUTION_SIZE = 31
 
 
 #===================================================#
 #                                                   #
-#              Steer to PWM parameters              #
+#              Avoid corner parameters              #
 #                                                   #
 #===================================================#
 
-STEERING_LIMIT = 18.0
+AVOID_CORNER_MAX_ANGLE = 8   # int: degress [°]
 
-PWM_STEER_MIN = 5.2
-PWM_STEER_MAX = 7.9
+AVOID_CORNER_MIN_DISTANCE = 2.5   # float: meters [m]
 
-STEER2PWM_A = 0.5 * (PWM_STEER_MAX - PWM_STEER_MIN) / STEERING_LIMIT
-STEER2PWM_B = 0.5 * (PWM_STEER_MAX + PWM_STEER_MIN)
+AVOID_CORNER_SCALE_FACTOR = 1.2   # float: number
 
-STEER_FACTOR = np.array(
+
+#===================================================#
+#                                                   #
+#           Steer actuator PWM parameters           #
+#                                                   #
+#===================================================#
+
+STEERING_LIMIT = 18.0   # float: degrees [°]
+
+DC_STEER_MIN = 5.3   # float: duty cycle
+DC_STEER_MAX = 7.9   # float: duty cycle
+
+STEER2DC_A = 0.5 * (DC_STEER_MAX - DC_STEER_MIN) / STEERING_LIMIT
+STEER2DC_B = 0.5 * (DC_STEER_MAX + DC_STEER_MIN)
+
+LERP_MAP_STEER = np.array(
     [[0.00, 0.000],
      [10.0, 0.167],
-     [20.0, 0.350],
-     [30.0, 0.650],
-     [40.0, 0.850],
+     [20.0, 0.360],
+     [30.0, 0.680],
+     [40.0, 0.900],
      [50.0, 1.000]]
 )
 
-STEER_FACTOR[:, 1] *= STEERING_LIMIT
+# Maps float: degrees [°] to float: degrees [°]
+LERP_MAP_STEER[:, 1] = LERP_MAP_STEER[:, 1] * STEERING_LIMIT
 
 
 #===================================================#
 #                                                   #
-#              Speed to PWM parameters              #
+#           Speed actuator PWM parameters           #
 #                                                   #
 #===================================================#
 
-PWM_SPEED_MIN = 7.6
-PWM_SPEED_MAX = 7.8
+APERTURE_ANGLE = 20   # int: degrees [°]
 
-SPEED2PWM_A = PWM_SPEED_MAX - PWM_SPEED_MIN
-SPEED2PWM_B = PWM_SPEED_MIN
+DC_SPEED_MIN = 7.6   # float: duty cycle
+DC_SPEED_MAX = 8.6   # float: duty cycle
 
-SPEED_FACTOR = np.array(
+SPEED2DC_A = DC_SPEED_MAX - DC_SPEED_MIN
+SPEED2DC_B = DC_SPEED_MIN
+
+# Maps float: meters [m] to float: number
+LERP_MAP_SPEED_DIST = np.array(
     [[0.00, 0.00],
      [0.25, 0.10],
      [0.50, 0.15],
@@ -64,6 +81,18 @@ SPEED_FACTOR = np.array(
      [2.00, 1.00]]
 )
 
+# Maps float: degrees [°] to float: number
+LERP_MAP_SPEED_ANGL = np.array(
+    [[0.00, 1.500],
+     [10.0, 1.200],
+     [20.0, 1.000],
+     [30.0, 0.950],
+     [40.0, 0.900],
+     [50.0, 0.900]]
+)
+
+AGGRESSIVENESS = 0.3   # float: number between 0.0 and 1.0
+
 
 #===================================================#
 #                                                   #
@@ -71,17 +100,25 @@ SPEED_FACTOR = np.array(
 #                                                   #
 #===================================================#
 
-WIDTH = 0.20
+WIDTH = 0.20   # float: meters [m]
 
-MIN_LENGTH = 0.35
-MAX_LENGTH = 0.50
+MIN_LENGTH = 0.28   # float: meters [m]
+MAX_LENGTH = 0.38   # float: meters [m]
 
-LENGTH_FACTOR = np.array(
+LERP_MAP_LENGTH = np.array(
     [[0.00, 0.00],
      [0.80, 0.30],
      [1.50, 1.00]]
 )
 
-LENGTH_FACTOR[:, 1] = MIN_LENGTH + (MAX_LENGTH - MIN_LENGTH) * LENGTH_FACTOR[:, 1]
+# Maps float: speed [m/s] to float: meters [m]
+LERP_MAP_LENGTH[:, 1] = LERP_MAP_LENGTH[:, 1] * (MAX_LENGTH - MIN_LENGTH)
+LERP_MAP_LENGTH[:, 1] = LERP_MAP_LENGTH[:, 1] + MIN_LENGTH
 
-PWM_REVERSE = 6.5
+MIN_POINTS_TO_TRIGGER = 8   # int: number
+
+REVERSE_CHECK_COUNTER = 8   # int: number
+
+DC_REVERSE = 6.3   # float: duty cycle
+
+STEER_IN_REVERSE = 0.7 * STEERING_LIMIT   # float: degrees [°]

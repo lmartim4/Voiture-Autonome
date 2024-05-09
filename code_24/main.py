@@ -19,6 +19,13 @@ interface = None
 
 
 def on_press(key: keyboard.Key) -> None:
+    """
+    Callback function to handle key press events.
+
+    Args:
+        key (keyboard.Key): pressed key.
+    """
+
     global running
 
     if key == keyboard.Key.enter and not running:
@@ -32,6 +39,10 @@ listener = keyboard.Listener(on_press=on_press)
 
 
 def init() -> None:
+    """
+    Initializes the interface elements.
+    """
+
     global interface
 
     interface = {
@@ -53,10 +64,10 @@ def init() -> None:
 
     time.sleep(0.5)
 
-    steer_pwm, speed_pwm = stop_command()
+    steer_dc, speed_dc = stop_command()
 
-    interface["steer"].set_duty_cycle(steer_pwm)
-    interface["speed"].set_duty_cycle(speed_pwm)
+    interface["steer"].set_duty_cycle(steer_dc)
+    interface["speed"].set_duty_cycle(speed_dc)
 
     interface["serial"].read(depth=5)
 
@@ -69,11 +80,16 @@ def init() -> None:
 
     try:
         listener.start()
+
     except RuntimeError:
         pass
 
 
 def close() -> None:
+    """
+    Closes the interface elements properly.
+    """
+
     global interface
 
     console.info("Closing the interface elements")
@@ -86,10 +102,10 @@ def close() -> None:
     except serial.serialutil.PortNotOpenError:
         pass
 
-    steer_pwm, speed_pwm = stop_command()
+    steer_dc, speed_dc = stop_command()
 
-    interface["steer"].set_duty_cycle(steer_pwm)
-    interface["speed"].set_duty_cycle(speed_pwm)
+    interface["steer"].set_duty_cycle(steer_dc)
+    interface["speed"].set_duty_cycle(speed_dc)
 
     interface["steer"].stop()
     interface["speed"].stop()
@@ -100,6 +116,13 @@ def close() -> None:
 
 
 def main(bypass: bool = False) -> None:
+    """
+    Main function to run the vehicle control logic.
+
+    Args:
+        bypass (bool, optional): bypass key press. Defaults to False.
+    """
+
     global interface, running
 
     if bypass:
@@ -108,7 +131,6 @@ def main(bypass: bool = False) -> None:
     init()
 
     try:
-        updated = np.zeros(360, dtype=bool)
         distances = np.zeros(360, dtype=float)
 
         for scan in interface["lidar"].iter_scans():
@@ -117,20 +139,23 @@ def main(bypass: bool = False) -> None:
             indices = np.round(scan[:, 0]).astype(int)
             indices = np.clip(indices, 0, 359)
 
-            updated[indices] = True
             distances[indices] = scan[:, 1] / 1000.0
 
             if not running:
                 continue
 
-            if np.count_nonzero(updated) < 60:
+            if np.count_nonzero(distances) < 60:
                 continue
 
-            serial = interface["serial"].read(depth=5)
-            data = {"lidar": distances, "updated": updated, "serial": serial}
+            for index in range(1, 360):
+                if distances[index] == 0.0:
+                    distances[index] = distances[index-1]
 
-            steer, steer_pwm = compute_steer(data)
-            speed, speed_pwm = compute_speed(data)
+            serial = interface["serial"].read(depth=5)
+            data = {"lidar": distances, "serial": serial}
+
+            steer, steer_dc = compute_steer(data)
+            speed, speed_dc = compute_speed(data, steer)
 
             console.info(f"{serial} {steer:.2f} deg {100 * speed:.0f}%")
 
@@ -139,12 +164,12 @@ def main(bypass: bool = False) -> None:
                 reverse(interface, data)
 
             else:
-                interface["steer"].set_duty_cycle(steer_pwm)
-                interface["speed"].set_duty_cycle(speed_pwm)
+                interface["steer"].set_duty_cycle(steer_dc)
+                interface["speed"].set_duty_cycle(speed_dc)
 
             console.log([*serial, steer, speed, distances.tolist()])
 
-            updated[:] = False
+            distances = 0.0 * distances
 
     except (KeyboardInterrupt, Exception) as error:
         if not isinstance(error, KeyboardInterrupt):

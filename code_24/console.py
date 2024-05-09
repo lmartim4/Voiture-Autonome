@@ -21,10 +21,12 @@ HEADER = "timestamp/speed_sensor/rear_distance/battery_voltage/steer/speed/point
 class Console:
     def __init__(self, path: str = "../logs") -> None:
         """
-        Creates the log file using the code execution timestamp.
+        Initializes the Console object.
+
+        Creates a log file using the code execution timestamp as filename.
 
         Args:
-            path (str, optional): logs folder path. Defaults to "logs".
+            path (str, optional): logs folder path. Defaults to "../logs".
         """
 
         timestamp = datetime.now().strftime("%Y-%m-%d/%H-%M-%S.csv")
@@ -48,7 +50,7 @@ class Console:
         Appends data to the log file and saves it every 10 new lines.
 
         Args:
-            data (List[Any]): data to be logged in.
+            data (List[Any]): data to be logged.
         """
 
         timestamp = datetime.timestamp(datetime.now())
@@ -77,7 +79,7 @@ class Console:
 
     def close(self) -> None:
         """
-        Properly closes log file.
+        Closes the log file properly.
         """
 
         self.file.close()

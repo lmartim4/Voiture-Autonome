@@ -21,14 +21,14 @@ with open("constants.py", "r") as file:
     lines = file.readlines()
 
     for index, line in enumerate(lines):
-        search = re.search(r"^PWM_[A-Z_]+ *= *", line)
+        search = re.search(r"^DC_[A-Z_]+ *= *", line)
 
         if search is None:
             continue
 
         slicer = search.span()[1]
 
-        search = re.search(r"\d+(.\d*)*", line[slicer:])
+        search = re.search(r"\d+\.\d+", line[slicer:])
         value = float(search.group())
 
         search = re.search(f"_[A-Z]+_[A-Z]+", line[:slicer])
@@ -51,22 +51,61 @@ time.sleep(0.5)
 
 
 def set_entry(entry: CTkEntry, value: float) -> None:
+    """
+    Sets the value of a custom tkinter Entry widget.
+
+    Args:
+        entry (CTkEntry): custom tkinter Entry widget.
+        value (float): value to set in the Entry widget.
+    """
+
     entry.delete(0, END)
     entry.insert(0, f"{value:.2f}")
 
 
-def get_entry(entry: CTkEntry) -> Union[float, None]:
+def get_entry(entry: CTkEntry) -> Union[None, float]:
+    """
+    Gets the value from a custom tkinter Entry widget.
+
+    Args:
+        entry (CTkEntry): custom tkinter Entry widget.
+
+    Returns:
+        Union[None, float]: value from the Entry widget if
+        it can be converted to a float, otherwise None.
+    """
+
     try:
         return float(entry.get())
+
     except ValueError:
         return None
 
 
 def select(steer: Any, speed: Any, selector: str) -> Any:
+    """
+    Selects between two values based on a selector.
+
+    Args:
+        steer (Any): value for the "steer" selector.
+        speed (Any): value for the "speed" selector.
+        selector (str): selector string.
+
+    Returns:
+        Any: value corresponding to the selector.
+    """
+
     return steer if selector == "steer" else speed
 
 
 def changed_controllers(selector: str) -> None:
+    """
+    Updates controller parameters and widgets based on user input.
+
+    Args:
+        selector (str): selector string indicating which widgets to update.
+    """
+
     global steer_pwm, speed_pwm
 
     min_value = get_entry(select(min_steer, min_speed, selector))
@@ -88,6 +127,13 @@ def changed_controllers(selector: str) -> None:
 
 
 def changed_current(selector: str) -> None:
+    """
+    Updates current value and related widgets based on user input.
+
+    Args:
+        selector (str): selector string indicating which widgets to update.
+    """
+
     min_value = get_entry(select(min_steer, min_speed, selector))
     max_value = get_entry(select(max_steer, max_speed, selector))
     cur_value = get_entry(select(cur_steer, cur_speed, selector))
@@ -103,11 +149,21 @@ def changed_current(selector: str) -> None:
 
 
 def align_command() -> None:
+    """
+    Sets the slider for steering command to the center
+    position and updates the controller accordingly.
+    """
+
     slider_steer.set(0.5)
     changed_controllers("steer")
 
 
 def stop_command() -> None:
+    """
+    Sets the slider for speed command to zero
+    and updates the controller accordingly.
+    """
+
     slider_speed.set(0.0)
     changed_controllers("speed")
 
@@ -228,10 +284,10 @@ app.mainloop()
 with open("constants.py", "w") as file:
     for key in ["steer", "speed"]:
         index, value = parameters[key]["min"]
-        lines[index] = re.sub(r"\d+(.\d*)*", str(value), lines[index])
+        lines[index] = re.sub(r"\d+\.\d+", str(value), lines[index])
 
         index, value = parameters[key]["max"]
-        lines[index] = re.sub(r"\d+(.\d*)*", str(value), lines[index])
+        lines[index] = re.sub(r"\d+\.\d+", str(value), lines[index])
 
     for line in lines:
         file.write(line)

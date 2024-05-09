@@ -13,29 +13,40 @@ BLUE  = "\33[34m"
 
 
 def info(message: str) -> None:
+    """
+    Displays information on the terminal with its timestamp.
+
+    Args:
+        message (str): message to be displayed on the console.
+    """
+
     timestamp = datetime.now().strftime("%H:%M:%S")
 
     print(f"\r{GREEN}{timestamp} {BLUE}[INFO]{NORMAL} {message}")
 
 
 def main() -> None:
-	comm = Serial("/dev/ttyACM", 115200, 0.1)
+    """
+    Main function for handling serial communication.
+    """
 
-	try:
-		while comm.is_available():
-			comm.serial.reset_input_buffer()
-			info(comm.serial.readline())
+    comm = Serial("/dev/ttyACM", 115200, 0.1)
 
-			time.sleep(0.2)
+    try:
+        while comm.is_available():
+            comm.serial.reset_input_buffer()
+            info(comm.serial.readline())
 
-		info("Serial comm is not available")
+            time.sleep(0.2)
 
-	except (KeyboardInterrupt, Exception) as error:
-		if not isinstance(error, KeyboardInterrupt):
-			traceback.print_exc()
+        info("Serial comm is not available")
 
-	comm.close()
+    except (KeyboardInterrupt, Exception) as error:
+        if not isinstance(error, KeyboardInterrupt):
+            traceback.print_exc()
+
+    comm.close()
 
 
 if __name__ == "__main__":
-	main()
+    main()
