@@ -91,10 +91,10 @@ def compute_steer(data: Dict[str, Any]) -> Tuple[float, float]:
 
     angle = angles[np.argmax(distances)]
 
-    l_angle = 0   # int: degrees [°]
-    r_angle = 0   # int: degrees [°]
+    l_angle = AVOID_CORNER_MAX_ANGLE   # int: degrees [°]
+    r_angle = AVOID_CORNER_MAX_ANGLE   # int: degrees [°]
 
-    for index in range(AVOID_CORNER_MAX_ANGLE, 0, -1):
+    for index in range(AVOID_CORNER_MAX_ANGLE-1, 0, -1):
         if data["lidar"][(angle + index) % 360] < AVOID_CORNER_MIN_DISTANCE:
             l_angle = index
 
