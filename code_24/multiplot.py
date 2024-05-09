@@ -44,12 +44,29 @@ plt.style.use(
 
 
 def info(message: str) -> None:
+    """
+    Displays information on the terminal with its timestamp.
+
+    Args:
+        message (str): message to be displayed on the console.
+    """
+
     timestamp = datetime.now().strftime("%H:%M:%S")
 
     print(f"\r{GREEN}{timestamp} {BLUE}[INFO]{NORMAL} {message}")
 
 
 def read_log(filename: str) -> pd.DataFrame:
+    """
+    Reads a log file and returns the data as a pandas DataFrame.
+
+    Args:
+        filename (str): path to the log file.
+
+    Returns:
+        pd.DataFrame: DataFrame containing the log data.
+    """
+
     df = pd.read_csv(filename, delimiter="/")
 
     # Parse string to array
@@ -60,6 +77,13 @@ def read_log(filename: str) -> pd.DataFrame:
 
 
 def draw_vehicle(ax: plt.Axes) -> None:
+    """
+    Draws a vehicle shape on the given matplotlib Axes object.
+
+    Args:
+        ax (plt.Axes): matplotlib Axes object to draw on.
+    """
+
     vehicle = np.array(
         [[ 0.00000000,  0.0951087 ],
          [ 0.07500000,  0.09103261],
@@ -106,6 +130,13 @@ def draw_vehicle(ax: plt.Axes) -> None:
 
 
 def main(filename: str) -> None:
+    """
+    Main function to visualize log data.
+
+    Args:
+        filename (str): path to the log file.
+    """
+
     info(f"Reading {UNDERLINE}{filename}{NORMAL}\n")
 
     df = read_log(filename)
@@ -150,9 +181,9 @@ def main(filename: str) -> None:
 
     ax1.set_xlim([  2.50, -2.50])
     ax1.set_ylim([ -1.00,  4.00])
-    ax2.set_ylim([ -0.05,  1.05])
+    ax2.set_ylim([ -0.08,  1.58])
     ax3.set_ylim([-22.00, 22.00])
-    ax4.set_ylim([  6.95,  8.05])
+    ax4.set_ylim([  6.40,  8.60])
     ax5.set_ylim([ -1.50, 31.50])
 
     slider = Slider(
@@ -171,6 +202,15 @@ def main(filename: str) -> None:
 
 
     def lineplot(ax: plt.Axes, x: np.ndarray, y: np.ndarray) -> None:
+        """
+        Plots a line plot with filled area under the curve.
+
+        Args:
+            ax (plt.Axes): matplotlib Axes object to plot on.
+            x (np.ndarray): x-values of the plot.
+            y (np.ndarray): y-values of the plot.
+        """
+
         style = {"color": "#4878cf", "alpha": 0.2}
         ax.fill_between(x=x, y1=y, y2=np.zeros(np.shape(x)), **style)
 
@@ -203,6 +243,13 @@ def main(filename: str) -> None:
 
 
     def update(value: float) -> None:
+        """
+        Updates the visualization based on the given timestamp value.
+
+        Args:
+            value (float): timestamp value to update the visualization.
+        """
+
         index = np.argmin(np.abs(timestamps - value))
 
         data = df.iloc[index]
@@ -234,6 +281,13 @@ def main(filename: str) -> None:
 
 
     def on_press(event: KeyEvent) -> None:
+        """
+        Handles key press events for navigation.
+
+        Args:
+            event (KeyEvent): key press event.
+        """
+
         index = np.argmin(np.abs(timestamps - slider.val))
 
         if event.key == "left":

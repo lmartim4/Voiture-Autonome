@@ -15,10 +15,29 @@ reverse_counter = 0
 
 
 def stop_command() -> Tuple[float, float]:
-    return STEER2PWM_B, SPEED2PWM_B
+    """
+    Returns commands to stop both actuators.
+
+    Returns:
+        Tuple[float, float]: commands to stop both actuators.
+    """
+
+    return STEER2DC_B, SPEED2DC_B
 
 
 def filter(distances: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Filters the lidar points that are in the vehicle's field
+    of view and smoothes the measurement using convolution.
+
+    Args:
+        distances (np.ndarray): lidar measurements in meters.
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: filtered and smoothed lidar
+        measurements along with the respective ray angles in degrees.
+    """
+
     shift = -LIDAR_HEADING + FIELD_OF_VIEW // 2
 
     angles = np.arange(0, 360)
@@ -32,58 +51,104 @@ def filter(distances: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     return distances[:FIELD_OF_VIEW], angles[:FIELD_OF_VIEW]
 
 
-def lerp(value: float, factor: np.ndarray) -> np.ndarray:
-    indices = np.nonzero(value < factor[:, 0])[0]
+def lerp(value: float, lerp_map: np.ndarray) -> np.ndarray:
+    """
+    Linearly interpolates a value based on a given interpolation map.
+
+    Args:
+        value (float): value to be interpolated.
+        lerp_map (np.ndarray): array containing the interpolation map.
+
+    Returns:
+        np.ndarray: interpolated value.
+    """
+
+    indices = np.nonzero(value < lerp_map[:, 0])[0]
 
     if len(indices) == 0:
-        return factor[-1, 1]
+        return lerp_map[-1, 1]
 
     index = indices[0]
 
-    delta = factor[index] - factor[index - 1]
-    scale = (value - factor[index - 1, 0]) / delta[0]
+    delta = lerp_map[index] - lerp_map[index-1]
+    scale = (value - lerp_map[index-1, 0]) / delta[0]
 
-    return factor[index - 1, 1] + scale * delta[1]
+    return lerp_map[index-1, 1] + scale * delta[1]
 
 
 def compute_steer(data: Dict[str, Any]) -> Tuple[float, float]:
+    """
+    Computes the steering angle and duty cycle based on lidar data.
+
+    Args:
+        data (Dict[str, Any]): dictionary containing lidar and serial data.
+
+    Returns:
+        Tuple[float, float]: computed steering angle and respective duty cycle.
+    """
+
     distances, angles = filter(data["lidar"])
 
     angle = angles[np.argmax(distances)]
 
-    angle_upper =  5
-    angle_lower = -5
+    l_angle = AVOID_CORNER_MAX_ANGLE   # int: degrees [°]
+    r_angle = AVOID_CORNER_MAX_ANGLE   # int: degrees [°]
 
-    for index in range(1, 6):
-        if data["lidar"][(angle + index) % 360] < 0.5:
-            angle_upper = index
+    for index in range(AVOID_CORNER_MAX_ANGLE-1, 0, -1):
+        if data["lidar"][(angle + index) % 360] < AVOID_CORNER_MIN_DISTANCE:
+            l_angle = index
 
-        if data["lidar"][(angle - index) % 360] < 0.5:
-            angle_lower = -index
+        if data["lidar"][(angle - index) % 360] < AVOID_CORNER_MIN_DISTANCE:
+            r_angle = index
 
-    delta = angle_upper + angle_lower
-    alpha = angle - LIDAR_HEADING + delta
+    if l_angle > r_angle:
+        delta = -AVOID_CORNER_SCALE_FACTOR * (AVOID_CORNER_MAX_ANGLE - r_angle)
+    else:
+        delta =  AVOID_CORNER_SCALE_FACTOR * (AVOID_CORNER_MAX_ANGLE - l_angle)
 
-    steer = np.sign(alpha) * lerp(np.abs(alpha), STEER_FACTOR)
-    pwm = steer * STEER2PWM_A + STEER2PWM_B
+    alpha = angle - LIDAR_HEADING - delta
 
-    return steer, pwm
+    steer = np.sign(alpha) * lerp(np.abs(alpha), LERP_MAP_STEER)
+    duty_cycle = steer * STEER2DC_A + STEER2DC_B
+
+    return steer, duty_cycle
 
 
-def compute_speed(data: Dict[str, Any]) -> Tuple[float, float]:
-    aperture_angle = 20
+def compute_speed(data: Dict[str, Any], steer: float) -> Tuple[float, float]:
+    """
+    Computes the speed and duty cycle based on lidar data and steering angle.
 
-    shift = -LIDAR_HEADING + aperture_angle // 2
+    Args:
+        data (Dict[str, Any]): dictionary containing lidar and serial data.
+        steer (float): computed steering angle in degrees.
 
-    dfront = np.mean(np.roll(data["lidar"], shift)[:aperture_angle])
+    Returns:
+        Tuple[float, float]: computed speed and respective duty cycle.
+    """
 
-    speed = np.clip(0.65 + 0.35 * lerp(dfront, SPEED_FACTOR), 0.0, 1.0)
-    pwm = speed * SPEED2PWM_A + SPEED2PWM_B
+    shift = -LIDAR_HEADING + APERTURE_ANGLE // 2
 
-    return speed, pwm
+    dfront = np.mean(np.roll(data["lidar"], shift)[:APERTURE_ANGLE])
+
+    speed = (1.0 - AGGRESSIVENESS) * lerp(dfront, LERP_MAP_SPEED_DIST)
+    speed = AGGRESSIVENESS + speed * lerp(np.abs(steer), LERP_MAP_SPEED_ANGL)
+
+    duty_cycle = speed * SPEED2DC_A + SPEED2DC_B
+
+    return speed, duty_cycle
 
 
 def check_reverse(data: Dict[str, Any]) -> bool:
+    """
+    Checks if the vehicle should reverse based on lidar and serial data.
+
+    Args:
+        data (Dict[str, Any]): dictionary containing lidar and serial data.
+
+    Returns:
+        bool: True if the vehicle should reverse, False otherwise.
+    """
+
     global last_reverse, reverse_counter
 
     now = time.time()
@@ -96,10 +161,10 @@ def check_reverse(data: Dict[str, Any]) -> bool:
 
         return True
 
-    LENGTH = lerp(data["serial"][0], LENGTH_FACTOR)
-    MAX_DIST = np.sqrt(0.25 * WIDTH**2 + LENGTH**2)
+    LENGTH = lerp(data["serial"][0], LERP_MAP_LENGTH)
+    max_distance = np.sqrt(0.25 * WIDTH**2 + LENGTH**2)
 
-    mask = data["updated"] & (data["lidar"] < MAX_DIST)
+    mask = (0 < data["lidar"]) & (data["lidar"] < max_distance)
 
     distances = data["lidar"][mask]
     angles = np.deg2rad(np.arange(0, 360)[mask] - LIDAR_HEADING)
@@ -109,13 +174,12 @@ def check_reverse(data: Dict[str, Any]) -> bool:
 
     mask = (np.abs(y) <= 0.5 * WIDTH) & (0.0 <= x) & (x <= LENGTH)
 
-    if np.count_nonzero(mask) > 5:
+    if np.count_nonzero(mask) > MIN_POINTS_TO_TRIGGER:
         reverse_counter += 1
-
     else:
         reverse_counter = 0
 
-    if reverse_counter > 3:
+    if reverse_counter > REVERSE_CHECK_COUNTER:
         reverse_counter = 0
 
         return True
@@ -124,6 +188,16 @@ def check_reverse(data: Dict[str, Any]) -> bool:
 
 
 def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
+    """
+    Executes the reverse maneuver based on interface and lidar data.
+
+    Args:
+        interface (Dict[str, Any]): dictionary containing interface components.
+        data (Dict[str, Any]): dictionary containing lidar and serial data.
+    """
+
+    global last_reverse
+
     interface["lidar"].stop()
 
     interface["speed"].set_duty_cycle(7.0)
@@ -131,13 +205,13 @@ def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
     interface["speed"].set_duty_cycle(7.5)
     time.sleep(0.03)
 
-    for attempt in range(5):
+    for _ in range(20):
         serial = interface["serial"].read(depth=5)
 
-        if 20.0 <= serial[1]:
+        if 30.0 <= serial[1]:
             break
 
-        time.sleep(0.5)
+        time.sleep(0.1)
 
     distances = data["lidar"]
     indices = np.arange(-5, 6, dtype=int) + 70
@@ -145,13 +219,19 @@ def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
     r_side = np.mean(distances[(LIDAR_HEADING - indices) % 360])
     l_side = np.mean(distances[(LIDAR_HEADING + indices) % 360])
 
-    steer = STEERING_LIMIT if r_side > l_side else -STEERING_LIMIT
+    steer = STEER_IN_REVERSE if r_side > l_side else -STEER_IN_REVERSE
 
-    interface["steer"].set_duty_cycle(steer * STEER2PWM_A + STEER2PWM_B)
-    interface["speed"].set_duty_cycle(PWM_REVERSE)
+    interface["steer"].set_duty_cycle(steer * STEER2DC_A + STEER2DC_B)
+    interface["speed"].set_duty_cycle(DC_REVERSE)
 
-    time.sleep(0.5)
     interface["lidar"].start()
-    time.sleep(1.0)
+
+    for _ in range(10):
+        if serial[1] < 20.0:
+            break
+
+        time.sleep(0.1)
 
     interface["speed"].set_duty_cycle(7.5)
+
+    last_reverse = time.time()
