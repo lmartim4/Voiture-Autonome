@@ -14,7 +14,7 @@
 - RPLIDAR A2m8-E4.
 - Capteur ultrasonique SRF10. 
 - Brush ESC Maverick msc-30BR-WP
-- Rasberry Pi 3
+- Raspberry Pi 3 Model B Plus Rev 1.3
 - Moteur Mabuchi RS-540SH
 - Interrupteur on/off
 - Engrenage à pignon 25T (Kit Carson TT-02 Tuning Set)
