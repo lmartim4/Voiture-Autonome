@@ -1,0 +1,66 @@
+{
+    "global_params": {
+        "tile_size": 1,
+        "track_width": 0.5
+    },
+    "tiles": [
+        {
+            "name": "straight",
+            "equations": {
+                "top": "(tile_size * (1 + track_width) / 2)",
+                "bottom": "(tile_size * (1 - track_width) / 2)"
+            },
+            "sockets": {
+                "top": null,
+                "bottom": null,
+                "left": "mid",
+                "right": "mid"
+            }
+        },
+        {
+            "name": "curved",
+            "equations": {
+                "top": "sqrt(((tile_size + track_width) / 2)**2 - (x - tile_size)**2)",
+                "bottom": "sqrt(((tile_size - track_width) / 2)**2 - (x - tile_size)**2)"
+            },
+            "sockets": {
+                "top": null,
+                "right": "mid",
+                "bottom": "mid",
+                "left": null
+            }
+        },
+        {
+            "name": "divider_down",
+            "equations": {
+                "top": "(tile_size+track_width)/2",
+                "left_bottom": "sqrt( ((tile_size-track_width)/2)**2 - x**2)",
+                "right_top": "(tile_size-track_width)/2",
+                "right_bottom": "sqrt( ((tile_size+track_width)/2)**2 - x**2)",
+                "right_domain_positive": "sqrt(track_width * tile_size)"
+            },
+            "sockets": {
+                "top": null,
+                "bottom": "mid",
+                "left": "mid",
+                "right": "mid"
+            }
+        },
+        {
+            "name": "divider_up",
+            "equations": {
+                "bottom": "(tile_size-track_width)/2",
+                "left_top": "tile_size - sqrt( ((tile_size-track_width)/2)**2 - x**2)",
+                "right_bottom": "(tile_size+track_width)/2",
+                "right_top": "tile_size - sqrt( ((tile_size+track_width)/2)**2 - x**2)",
+                "right_domain_positive": "sqrt(track_width * tile_size)"
+            },
+            "sockets": {
+                "top": "mid",
+                "bottom": null,
+                "left": "mid",
+                "right": "mid"
+            }
+        }
+    ]
+}
