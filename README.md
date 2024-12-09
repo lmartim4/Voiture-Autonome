@@ -51,7 +51,7 @@ Créez un environnement virtuel et installez les modules nécessaires :
 
 ```
 python -m venv venv
-source venv/bin/activate
+source venv/bin/activate (for Linux) or venv\Scripts\activate (for Windows)
 pip install -r requirements.txt
 ```
 
