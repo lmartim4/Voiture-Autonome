@@ -10,6 +10,16 @@
                 "top": "(tile_size * (1 + track_width) / 2)",
                 "bottom": "(tile_size * (1 - track_width) / 2)"
             },
+            "domains": {
+                "top": [
+                    "0",
+                    "tile_size"
+                ],
+                "bottom": [
+                    "0",
+                    "tile_size"
+                ]
+            },
             "sockets": {
                 "top": null,
                 "bottom": null,
@@ -22,6 +32,16 @@
             "equations": {
                 "top": "sqrt(((tile_size + track_width) / 2)**2 - (x - tile_size)**2)",
                 "bottom": "sqrt(((tile_size - track_width) / 2)**2 - (x - tile_size)**2)"
+            },
+            "domains": {
+                "top": [
+                    "(tile_size - track_width)/2",
+                    "tile_size"
+                ],
+                "bottom": [
+                    "(tile_size + track_width)/2",
+                    "tile_size"
+                ]
             },
             "sockets": {
                 "top": null,
@@ -36,8 +56,25 @@
                 "top": "(tile_size+track_width)/2",
                 "left_bottom": "sqrt( ((tile_size-track_width)/2)**2 - x**2)",
                 "right_top": "(tile_size-track_width)/2",
-                "right_bottom": "sqrt( ((tile_size+track_width)/2)**2 - x**2)",
-                "right_domain_positive": "sqrt(track_width * tile_size)"
+                "right_bottom": "sqrt( ((tile_size+track_width)/2)**2 - x**2)"
+            },
+            "domains": {
+                "top": [
+                    "0",
+                    "tile_size"
+                ],
+                "left_bottom": [
+                    "0",
+                    "(tile_size - track_width)/2"
+                ],
+                "right_top": [
+                    "sqrt(track_width * tile_size)",
+                    "tile_size"
+                ],
+                "right_bottom": [
+                    "sqrt(track_width * tile_size)",                    
+                    "(tile_size + track_width)/2"
+                ]
             },
             "sockets": {
                 "top": null,
@@ -52,8 +89,25 @@
                 "bottom": "(tile_size-track_width)/2",
                 "left_top": "tile_size - sqrt( ((tile_size-track_width)/2)**2 - x**2)",
                 "right_bottom": "(tile_size+track_width)/2",
-                "right_top": "tile_size - sqrt( ((tile_size+track_width)/2)**2 - x**2)",
-                "right_domain_positive": "sqrt(track_width * tile_size)"
+                "right_top": "tile_size - sqrt( ((tile_size+track_width)/2)**2 - x**2)"
+            },
+            "domains": {
+                "bottom": [
+                    "0",
+                    "tile_size"
+                ],
+                "left_top": [
+                    "0",
+                    "(tile_size - track_width)/2"
+                ],
+                "right_bottom": [
+                    "sqrt(track_width * tile_size)",
+                    "tile_size"
+                ],
+                "right_top": [
+                    "sqrt(track_width * tile_size)",                    
+                    "(tile_size + track_width)/2"
+                ]
             },
             "sockets": {
                 "top": "mid",

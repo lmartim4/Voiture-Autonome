@@ -2,18 +2,18 @@ import numpy as np
 from sympy import symbols, sympify
 
 class TileDefinition:
-    def __init__(self, name, equations, sockets):
+    def __init__(self, name, equations, domains, sockets):
         """
         name: str - Nome da tile (e.g., 'straight', 'curved').
         equations: dict - Equações que definem a geometria da pista.
-                          Ex: {'top': 'y = 0.75', 'bottom': 'y = 0.25'}.
+        domains: dict - Intervalos de domínio das equações.
         sockets: dict - Definições de conectividade com base nas orientações.
-                        Ex: {'top': 'in', 'bottom': 'out', 'left': None, 'right': None}.
         """
         self.name = name
-        self.equations = equations  # Raw equations as strings
-        self.sockets = sockets      # Connectivity rules (e.g., 'in', 'out', None)
-        self.parsed_equations = self.parse_equations(equations)  # Parsed equations (as functions)
+        self.equations = equations  # Raw equations como strings
+        self.domains = domains      # Domínios das equações
+        self.sockets = sockets      # Regras de conectividade
+        self.parsed_equations = self.parse_equations(equations)  # Equações parseadas
 
     def parse_equations(self, equations):
         """
@@ -29,9 +29,6 @@ class TileDefinition:
     def from_config(cls, config, global_params):
         """
         Cria uma TileDefinition a partir de uma configuração (uma única tile do arquivo JSON).
-
-        config: dict - Configuração da tile (um item da lista 'tiles').
-        global_params: dict - Parâmetros globais (e.g., largura da pista).
         """
         # Substituir parâmetros globais nas equações
         equations = {
@@ -39,44 +36,55 @@ class TileDefinition:
                    .replace("track_width", str(global_params['track_width']))
             for key, eq in config['equations'].items()
         }
-        
-        return cls(config['name'], equations, config['sockets'])
 
+        # Substituir parâmetros globais nos domínios
+        domains = {
+            key: [
+                float(sympify(limit.replace("tile_size", str(global_params['tile_size']))
+                                        .replace("track_width", str(global_params['track_width']))))
+                for limit in domain
+            ]
+            for key, domain in config.get("domains", {}).items()
+        }
 
-    # def evaluate(self, orientation, resolution=100):
-    #     """
-    #     Gera os pontos (numpy arrays) da geometria da pista baseada nas equações.
-    #     orientation: int - Orientação da tile (0, 1, 2, 3).
-    #     resolution: int - Número de pontos gerados para as curvas.
-        
-    #     Retorna:
-    #     dict - Contém arrays numpy de pontos para cada borda.
-    #            Ex: {'top': np.array([[x1, y1], [x2, y2], ...]), ...}
-    #     """
-    #     points = {}
-    #     x_vals = np.linspace(-0.5, 0.5, resolution)  # Coordenadas globais do tile (1x1 grid)
+        return cls(config['name'], equations, domains, config['sockets'])
 
-    #     for side, eq in self.parsed_equations.items():
-    #         y_vals = [float(eq.evalf(subs={'x': x})) for x in x_vals]  # Avalia a equação
-    #         points[side] = np.column_stack((x_vals, y_vals))
+    def evaluate(self, orientation, global_params, resolution=100):
+        """
+        Gera os pontos (numpy arrays) da geometria da pista baseada nas equações.
+        """
+        T = global_params.get('tile_size')
+        points = {}
 
-    #     # Rotaciona os pontos de acordo com a orientação
-    #     if orientation:
-    #         points = self.rotate_points(points, orientation)
+        for side, eq in self.parsed_equations.items():
+            # Obter o domínio da equação
+            domain = self.domains.get(side, [0, T])
+            domain_size = domain[1] - domain[0]
 
-    #     return points
+            # Ajustar a resolução proporcional ao tamanho do domínio
+            local_resolution = int(resolution * (domain_size / T))
 
-    # def rotate_points(self, points, orientation):
-    #     """
-    #     Rotaciona os pontos da tile para a orientação especificada.
-    #     orientation: int - Orientação da tile (0: sem rotação, 1: 90°, etc.).
-    #     """
-    #     angle = np.pi / 2 * orientation
-    #     rotation_matrix = np.array([
-    #         [np.cos(angle), -np.sin(angle)],
-    #         [np.sin(angle), np.cos(angle)]
-    #     ])
-    #     return {
-    #         side: np.dot(pts, rotation_matrix.T)
-    #         for side, pts in points.items()
-    #     }
+            # Gerar valores de x dentro do domínio
+            x_vals = np.linspace(domain[0], domain[1], local_resolution)
+            y_vals = [float(eq.evalf(subs={'x': x})) for x in x_vals]  # Avaliar a equação
+            points[side] = np.column_stack((x_vals, y_vals))
+
+        # Rotaciona os pontos de acordo com a orientação
+        if orientation:
+            points = self.rotate_points(points, orientation)
+
+        return points
+
+    def rotate_points(self, points, orientation):
+        """
+        Rotaciona os pontos da tile para a orientação especificada.
+        """
+        angle = np.pi / 2 * orientation
+        rotation_matrix = np.array([
+            [np.cos(angle), -np.sin(angle)],
+            [np.sin(angle), np.cos(angle)]
+        ])
+        return {
+            side: np.dot(pts, rotation_matrix.T)
+            for side, pts in points.items()
+        }
