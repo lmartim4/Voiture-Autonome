@@ -72,7 +72,7 @@
                     "tile_size"
                 ],
                 "right_bottom": [
-                    "sqrt(track_width * tile_size)",                    
+                    "sqrt(track_width * tile_size)",
                     "(tile_size + track_width)/2"
                 ]
             },
@@ -105,7 +105,7 @@
                     "tile_size"
                 ],
                 "right_top": [
-                    "sqrt(track_width * tile_size)",                    
+                    "sqrt(track_width * tile_size)",
                     "(tile_size + track_width)/2"
                 ]
             },
@@ -114,6 +114,39 @@
                 "bottom": null,
                 "left": "mid",
                 "right": "mid"
+            }
+        },
+        {
+            "name": "empty",
+            "equations": {
+                "top": "0",
+                "bottom": "0",
+                "left": "0",
+                "right": "0"
+            },
+            "domains": {
+                "top": [
+                    "0",
+                    "0"
+                ],
+                "bottom": [
+                    "0",
+                    "0"
+                ],
+                "left": [
+                    "0",
+                    "0"
+                ],
+                "right": [
+                    "0",
+                    "0"
+                ]
+            },
+            "sockets": {
+                "top": null,
+                "bottom": null,
+                "left": null,
+                "right": null
             }
         }
     ]
