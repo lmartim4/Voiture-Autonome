@@ -101,3 +101,39 @@ class TileDefinition:
 
         return rotated_points
 
+    def generate_bitmap(tile, global_params, resolution=500, grid_size=100, orientation=0):
+        """
+        Gera um bitmap para uma única tile.
+
+        tile: TileDefinition - Instância da tile.
+        global_params: dict - Parâmetros globais, incluindo tile_size.
+        resolution: int - Resolução para cada tile.
+        grid_size: int - Tamanho da matriz do bitmap.
+        orientation: int - Orientação da tile (0, 1, 2, 3).
+
+        Retorna:
+        np.ndarray - Bitmap da tile.
+        """
+        
+        tile_size = global_params.get('tile_size', 1)
+        bitmap = np.zeros((grid_size, grid_size))  # Inicializar o bitmap vazio
+
+        # Escala para mapear o espaço contínuo para o grid discreto
+        scale = grid_size / tile_size
+
+        # Gerar pontos para a orientação especificada
+        points = tile.evaluate(orientation=orientation, resolution=resolution, global_params=global_params)
+
+        # Mapear pontos para o bitmap
+        for side, pts in points.items():
+            # print(pts)
+            for x, y in pts:
+                # Converter coordenadas contínuas para índices no bitmap
+                i = int(y * scale)  # Índice da linha
+                j = int(x * scale)  # Índice da coluna
+                # print(i,j)
+                if 0 <= i < grid_size and 0 <= j < grid_size:
+                    # print("Setei (", i,", ",j, ")")
+                    bitmap[i, j] = 1  # Marca o pixel como parte da pista
+
+        return bitmap    

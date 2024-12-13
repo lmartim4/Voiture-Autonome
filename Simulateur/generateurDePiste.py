@@ -1,4 +1,5 @@
 import json
+from tileDefinition import TileDefinition
 
 # Carregar configurações do arquivo
 with open('config.json', 'r') as f:
