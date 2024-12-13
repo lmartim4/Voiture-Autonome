@@ -71,20 +71,33 @@ class TileDefinition:
 
         # Rotaciona os pontos de acordo com a orientação
         if orientation:
-            points = self.rotate_points(points, orientation)
+            points = self.rotate_points(points, orientation, tile_size=T)
 
         return points
 
-    def rotate_points(self, points, orientation):
+    def rotate_points(self, points, orientation, tile_size):
         """
-        Rotaciona os pontos da tile para a orientação especificada.
+        Rotaciona os pontos da tile para a orientação especificada em torno do centro da tile.
+        orientation: int - Orientação da tile (0: sem rotação, 1: 90°, etc.).
+        tile_size: float - Tamanho da tile (usado para determinar o centro de rotação).
         """
         angle = np.pi / 2 * orientation
         rotation_matrix = np.array([
             [np.cos(angle), -np.sin(angle)],
             [np.sin(angle), np.cos(angle)]
         ])
-        return {
-            side: np.dot(pts, rotation_matrix.T)
-            for side, pts in points.items()
-        }
+
+        # Centro da tile
+        center = np.array([tile_size / 2, tile_size / 2])
+
+        rotated_points = {}
+        for side, pts in points.items():
+            # Transladar os pontos para o centro
+            translated_pts = pts - center
+            # Aplicar rotação
+            rotated_pts = np.dot(translated_pts, rotation_matrix.T)
+            # Transladar de volta para a posição original
+            rotated_points[side] = rotated_pts + center
+
+        return rotated_points
+
