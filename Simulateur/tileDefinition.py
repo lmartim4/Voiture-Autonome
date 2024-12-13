@@ -4,40 +4,40 @@ from sympy import symbols, sympify
 class TileDefinition:
     def __init__(self, name, equations, domains, sockets):
         """
-        name: str - Nome da tile (e.g., 'straight', 'curved').
-        equations: dict - Equações que definem a geometria da pista.
-        domains: dict - Intervalos de domínio das equações.
-        sockets: dict - Definições de conectividade com base nas orientações.
+        name: str - Nom de la tuile (par exemple, 'straight', 'curved').
+        equations: dict - Équations définissant la géométrie de la piste.
+        domains: dict - Intervalles de domaine des équations.
+        sockets: dict - Définition des connectivités basées sur les orientations.
         """
         self.name = name
-        self.equations = equations  # Raw equations como strings
-        self.domains = domains      # Domínios das equações
-        self.sockets = sockets      # Regras de conectividade
-        self.parsed_equations = self.parse_equations(equations)  # Equações parseadas
+        self.equations = equations  # Équations brutes sous forme de chaînes
+        self.domains = domains      # Domaines des équations
+        self.sockets = sockets      # Règles de connectivité
+        self.parsed_equations = self.parse_equations(equations)  # Équations analysées
 
     def parse_equations(self, equations):
         """
-        Converte as equações definidas em strings para funções utilizáveis.
+        Convertit les équations définies en chaînes en fonctions utilisables.
         """
         parsed = {}
         x = symbols('x')
         for key, eq in equations.items():
-            parsed[key] = sympify(eq)  # Converte para expressão simbólica
+            parsed[key] = sympify(eq)  # Convertit en expression symbolique
         return parsed
 
     @classmethod
     def from_config(cls, config, global_params):
         """
-        Cria uma TileDefinition a partir de uma configuração (uma única tile do arquivo JSON).
+        Crée une TileDefinition à partir d'une configuration (une seule tuile dans le fichier JSON).
         """
-        # Substituir parâmetros globais nas equações
+        # Remplace les paramètres globaux dans les équations
         equations = {
             key: eq.replace("tile_size", str(global_params['tile_size']))
                    .replace("track_width", str(global_params['track_width']))
             for key, eq in config['equations'].items()
         }
 
-        # Substituir parâmetros globais nos domínios
+        # Remplace les paramètres globaux dans les domaines
         domains = {
             key: [
                 float(sympify(limit.replace("tile_size", str(global_params['tile_size']))
@@ -51,25 +51,25 @@ class TileDefinition:
 
     def evaluate(self, orientation, global_params, resolution=100):
         """
-        Gera os pontos (numpy arrays) da geometria da pista baseada nas equações.
+        Génère les points (tableaux numpy) de la géométrie de la piste à partir des équations.
         """
         T = global_params.get('tile_size')
         points = {}
 
         for side, eq in self.parsed_equations.items():
-            # Obter o domínio da equação
+            # Obtenir le domaine de l'équation
             domain = self.domains.get(side, [0, T])
             domain_size = domain[1] - domain[0]
 
-            # Ajustar a resolução proporcional ao tamanho do domínio
+            # Ajuster la résolution proportionnellement à la taille du domaine
             local_resolution = int(resolution * (domain_size / T))
 
-            # Gerar valores de x dentro do domínio
+            # Générer les valeurs de x dans le domaine
             x_vals = np.linspace(domain[0], domain[1], local_resolution)
-            y_vals = [float(eq.evalf(subs={'x': x})) for x in x_vals]  # Avaliar a equação
+            y_vals = [float(eq.evalf(subs={'x': x})) for x in x_vals]  # Évaluer l'équation
             points[side] = np.column_stack((x_vals, y_vals))
 
-        # Rotaciona os pontos de acordo com a orientação
+        # Tourner les points selon l'orientation
         if orientation:
             points = self.rotate_points(points, orientation, tile_size=T)
 
@@ -77,9 +77,9 @@ class TileDefinition:
 
     def rotate_points(self, points, orientation, tile_size):
         """
-        Rotaciona os pontos da tile para a orientação especificada em torno do centro da tile.
-        orientation: int - Orientação da tile (0: sem rotação, 1: 90°, etc.).
-        tile_size: float - Tamanho da tile (usado para determinar o centro de rotação).
+        Tourne les points de la tuile pour l'orientation spécifiée autour du centre de la tuile.
+        orientation: int - Orientation de la tuile (0: pas de rotation, 1: 90°, etc.).
+        tile_size: float - Taille de la tuile (utilisée pour déterminer le centre de rotation).
         """
         angle = np.pi / 2 * orientation
         rotation_matrix = np.array([
@@ -87,53 +87,50 @@ class TileDefinition:
             [np.sin(angle), np.cos(angle)]
         ])
 
-        # Centro da tile
+        # Centre de la tuile
         center = np.array([tile_size / 2, tile_size / 2])
 
         rotated_points = {}
         for side, pts in points.items():
-            # Transladar os pontos para o centro
+            # Translater les points vers le centre
             translated_pts = pts - center
-            # Aplicar rotação
+            # Appliquer la rotation
             rotated_pts = np.dot(translated_pts, rotation_matrix.T)
-            # Transladar de volta para a posição original
+            # Translater à nouveau pour revenir à la position originale
             rotated_points[side] = rotated_pts + center
 
         return rotated_points
 
     def generate_bitmap(tile, global_params, resolution=500, grid_size=100, orientation=0):
         """
-        Gera um bitmap para uma única tile.
+        Génère un bitmap pour une seule tuile.
 
-        tile: TileDefinition - Instância da tile.
-        global_params: dict - Parâmetros globais, incluindo tile_size.
-        resolution: int - Resolução para cada tile.
-        grid_size: int - Tamanho da matriz do bitmap.
-        orientation: int - Orientação da tile (0, 1, 2, 3).
+        tile: TileDefinition - Instance de la tuile.
+        global_params: dict - Paramètres globaux, y compris tile_size.
+        resolution: int - Résolution pour chaque tuile.
+        grid_size: int - Taille de la matrice du bitmap.
+        orientation: int - Orientation de la tuile (0, 1, 2, 3).
 
-        Retorna:
-        np.ndarray - Bitmap da tile.
+        Retourne:
+        np.ndarray - Bitmap de la tuile.
         """
         
         tile_size = global_params.get('tile_size', 1)
-        bitmap = np.zeros((grid_size, grid_size))  # Inicializar o bitmap vazio
+        bitmap = np.zeros((grid_size, grid_size))  # Initialiser le bitmap vide
 
-        # Escala para mapear o espaço contínuo para o grid discreto
+        # Échelle pour mapper l'espace continu au grid discret
         scale = grid_size / tile_size
 
-        # Gerar pontos para a orientação especificada
+        # Générer les points pour l'orientation spécifiée
         points = tile.evaluate(orientation=orientation, resolution=resolution, global_params=global_params)
 
-        # Mapear pontos para o bitmap
+        # Mapper les points sur le bitmap
         for side, pts in points.items():
-            # print(pts)
             for x, y in pts:
-                # Converter coordenadas contínuas para índices no bitmap
-                i = int(y * scale)  # Índice da linha
-                j = int(x * scale)  # Índice da coluna
-                # print(i,j)
+                # Convertir les coordonnées continues en indices dans le bitmap
+                i = int(y * scale)  # Indice de la ligne
+                j = int(x * scale)  # Indice de la colonne
                 if 0 <= i < grid_size and 0 <= j < grid_size:
-                    # print("Setei (", i,", ",j, ")")
-                    bitmap[i, j] = 1  # Marca o pixel como parte da pista
+                    bitmap[i, j] = 1  # Marque le pixel comme faisant partie de la piste
 
-        return bitmap    
+        return bitmap

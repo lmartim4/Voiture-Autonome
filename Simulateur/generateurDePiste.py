@@ -1,15 +1,30 @@
 import json
 from tileDefinition import TileDefinition
+from piste import Grid
 
-# Carregar configurações do arquivo
-with open('config.json', 'r') as f:
-    config = json.load(f)
+# Fonction pour construire une grille
 
-global_params = config['global_params']
-tile_definitions = [
-    TileDefinition.from_config(tile_config, global_params)
-    for tile_config in config['tiles']
-]
+def construire_grille(config_path, rows, cols, tile_resolution):
+    """
+    Charge la configuration et construit une grille.
 
-# Dicionário para acessar as definições por nome
-tile_library = {tile.name: tile for tile in tile_definitions}
+    config_path: str - Chemin du fichier JSON de configuration.
+    rows: int - Nombre de lignes dans la grille.
+    cols: int - Nombre de colonnes dans la grille.
+    tile_resolution: int - Résolution des tuiles pour le bitmap.
+
+    Retourne:
+    Grid - Instance de la grille générée.
+    """
+    with open(config_path, 'r') as file:
+        data = json.load(file)
+
+    global_params = data["global_params"]
+    tiles = data["tiles"]
+
+    tile_definitions = [TileDefinition.from_config(tile, global_params) for tile in tiles]
+
+    grid = Grid(rows=rows, cols=cols, tile_definitions=tile_definitions, global_params=global_params)
+    grid.simulate_collapse()
+
+    return grid
