@@ -26,7 +26,7 @@ class Console:
         Creates a log file using the code execution timestamp as filename.
 
         Args:
-            path (str, optional): logs folder path. Defaults to "../logs".
+            path (str, optional): logs folder path. Defaults to "logs".
         """
 
         timestamp = datetime.now().strftime("%Y-%m-%d/%H-%M-%S.csv")
@@ -50,7 +50,7 @@ class Console:
         Appends data to the log file and saves it every 10 new lines.
 
         Args:
-            data (List[Any]): data to be logged.
+            data (List[Any]): data to be logged in.
         """
 
         timestamp = datetime.timestamp(datetime.now())
@@ -79,7 +79,7 @@ class Console:
 
     def close(self) -> None:
         """
-        Closes the log file properly.
+        Properly closes log file.
         """
 
         self.file.close()

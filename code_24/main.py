@@ -4,11 +4,11 @@ import numpy as np
 
 from pynput import keyboard
 
-from console import Console
+from code_24.console import Console
 
 from core import *
 
-from control import *
+from code_24.control import *
 
 
 console = Console()
@@ -64,10 +64,10 @@ def init() -> None:
 
     time.sleep(0.5)
 
-    steer_dc, speed_dc = stop_command()
+    steer_pwm, speed_pwm = stop_command()
 
-    interface["steer"].set_duty_cycle(steer_dc)
-    interface["speed"].set_duty_cycle(speed_dc)
+    interface["steer"].set_duty_cycle(steer_pwm)
+    interface["speed"].set_duty_cycle(speed_pwm)
 
     interface["serial"].read(depth=5)
 
@@ -80,7 +80,6 @@ def init() -> None:
 
     try:
         listener.start()
-
     except RuntimeError:
         pass
 
@@ -102,10 +101,10 @@ def close() -> None:
     except serial.serialutil.PortNotOpenError:
         pass
 
-    steer_dc, speed_dc = stop_command()
+    steer_pwm, speed_pwm = stop_command()
 
-    interface["steer"].set_duty_cycle(steer_dc)
-    interface["speed"].set_duty_cycle(speed_dc)
+    interface["steer"].set_duty_cycle(steer_pwm)
+    interface["speed"].set_duty_cycle(speed_pwm)
 
     interface["steer"].stop()
     interface["speed"].stop()
@@ -149,13 +148,13 @@ def main(bypass: bool = False) -> None:
 
             for index in range(1, 360):
                 if distances[index] == 0.0:
-                    distances[index] = distances[index-1]
+                    distances[index] = distances[index - 1]
 
             serial = interface["serial"].read(depth=5)
             data = {"lidar": distances, "serial": serial}
 
-            steer, steer_dc = compute_steer(data)
-            speed, speed_dc = compute_speed(data, steer)
+            steer, steer_pwm = compute_steer(data)
+            speed, speed_pwm = compute_speed(data, steer)
 
             console.info(f"{serial} {steer:.2f} deg {100 * speed:.0f}%")
 
@@ -164,8 +163,8 @@ def main(bypass: bool = False) -> None:
                 reverse(interface, data)
 
             else:
-                interface["steer"].set_duty_cycle(steer_dc)
-                interface["speed"].set_duty_cycle(speed_dc)
+                interface["steer"].set_duty_cycle(steer_pwm)
+                interface["speed"].set_duty_cycle(speed_pwm)
 
             console.log([*serial, steer, speed, distances.tolist()])
 
