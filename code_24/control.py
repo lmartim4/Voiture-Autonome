@@ -6,7 +6,7 @@ from scipy.signal import convolve
 
 from typing import Any, Dict, Tuple
 
-from code_24.constants import *
+from constants import *
 
 
 last_reverse = None
@@ -21,8 +21,7 @@ def stop_command() -> Tuple[float, float]:
     Returns:
         Tuple[float, float]: commands to stop both actuators.
     """
-
-    return STEER2DC_B, SPEED2DC_B
+    return STEER2PWM_B, SPEED2PWM_B
 
 
 def filter(distances: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -132,6 +131,7 @@ def compute_speed(data: Dict[str, Any], steer: float) -> Tuple[float, float]:
         Tuple[float, float]: computed speed and respective duty cycle.
     """
     aperture_angle = 20
+
     shift = -LIDAR_HEADING + aperture_angle // 2
 
     dfront = np.mean(np.roll(data["lidar"], shift)[:aperture_angle])
@@ -241,3 +241,4 @@ def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
     interface["speed"].set_duty_cycle(7.5)
 
     last_reverse = time.time()
+
