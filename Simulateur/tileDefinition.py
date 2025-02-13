@@ -83,8 +83,8 @@ class TileDefinition:
         """
         angle = np.pi / 2 * orientation
         rotation_matrix = np.array([
-            [np.cos(angle), -np.sin(angle)],
-            [np.sin(angle), np.cos(angle)]
+            [np.cos(angle), np.sin(angle)],
+            [-np.sin(angle), np.cos(angle)]
         ])
 
         # Centre de la tuile
