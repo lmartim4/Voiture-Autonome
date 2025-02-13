@@ -145,5 +145,5 @@ class Serial:
         """
 
         if self.serial is not None:
-            self.serial.close()
+            #self.serial.close()
             self.serial = None
