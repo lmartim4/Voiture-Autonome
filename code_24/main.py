@@ -46,7 +46,7 @@ def init() -> None:
     global interface
 
     interface = {
-        "lidar": RPLidar("/dev/ttyUSB", baudrate=256000),
+        "lidar": RPLidar("/dev/ttyUSB", baudrate=115200),
         "steer": PWM(channel=1, frequency=50.0),
         "speed": PWM(channel=0, frequency=50.0),
         "serial": Serial("/dev/ttyACM", 115200, timeout=0.1)
