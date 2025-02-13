@@ -14,7 +14,7 @@ BLUE  = "\33[34m"
 
 def info(message: str) -> None:
     """
-    Displays information on the terminal with its timestamp.
+    Displays information on the termina l with its timestamp.
 
     Args:
         message (str): message to be displayed on the console.
