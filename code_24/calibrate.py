@@ -21,14 +21,14 @@ with open("constants.py", "r") as file:
     lines = file.readlines()
 
     for index, line in enumerate(lines):
-        search = re.search(r"^DC_[A-Z_]+ *= *", line)
+        search = re.search(r"^PWM_[A-Z_]+ *= *", line)
 
         if search is None:
             continue
 
         slicer = search.span()[1]
 
-        search = re.search(r"\d+\.\d+", line[slicer:])
+        search = re.search(r"\d+(.\d*)*", line[slicer:])
         value = float(search.group())
 
         search = re.search(f"_[A-Z]+_[A-Z]+", line[:slicer])
@@ -77,7 +77,6 @@ def get_entry(entry: CTkEntry) -> Union[None, float]:
 
     try:
         return float(entry.get())
-
     except ValueError:
         return None
 
@@ -284,10 +283,10 @@ app.mainloop()
 with open("constants.py", "w") as file:
     for key in ["steer", "speed"]:
         index, value = parameters[key]["min"]
-        lines[index] = re.sub(r"\d+\.\d+", str(value), lines[index])
+        lines[index] = re.sub(r"\d+(.\d*)*", str(value), lines[index])
 
         index, value = parameters[key]["max"]
-        lines[index] = re.sub(r"\d+\.\d+", str(value), lines[index])
+        lines[index] = re.sub(r"\d+(.\d*)*", str(value), lines[index])
 
     for line in lines:
         file.write(line)

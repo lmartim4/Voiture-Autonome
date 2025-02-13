@@ -21,8 +21,7 @@ def stop_command() -> Tuple[float, float]:
     Returns:
         Tuple[float, float]: commands to stop both actuators.
     """
-
-    return STEER2DC_B, SPEED2DC_B
+    return STEER2PWM_B, SPEED2PWM_B
 
 
 def filter(distances: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -51,7 +50,7 @@ def filter(distances: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     return distances[:FIELD_OF_VIEW], angles[:FIELD_OF_VIEW]
 
 
-def lerp(value: float, lerp_map: np.ndarray) -> np.ndarray:
+def lerp(value: float, factor: np.ndarray) -> np.ndarray:
     """
     Linearly interpolates a value based on a given interpolation map.
 
@@ -63,17 +62,17 @@ def lerp(value: float, lerp_map: np.ndarray) -> np.ndarray:
         np.ndarray: interpolated value.
     """
 
-    indices = np.nonzero(value < lerp_map[:, 0])[0]
+    indices = np.nonzero(value < factor[:, 0])[0]
 
     if len(indices) == 0:
-        return lerp_map[-1, 1]
+        return factor[-1, 1]
 
     index = indices[0]
 
-    delta = lerp_map[index] - lerp_map[index-1]
-    scale = (value - lerp_map[index-1, 0]) / delta[0]
+    delta = factor[index] - factor[index - 1]
+    scale = (value - factor[index - 1, 0]) / delta[0]
 
-    return lerp_map[index-1, 1] + scale * delta[1]
+    return factor[index - 1, 1] + scale * delta[1]
 
 
 def compute_steer(data: Dict[str, Any]) -> Tuple[float, float]:
@@ -91,27 +90,33 @@ def compute_steer(data: Dict[str, Any]) -> Tuple[float, float]:
 
     angle = angles[np.argmax(distances)]
 
-    l_angle = AVOID_CORNER_MAX_ANGLE   # int: degrees [°]
-    r_angle = AVOID_CORNER_MAX_ANGLE   # int: degrees [°]
+    l_angle = 8
+    r_angle = 8
 
-    for index in range(AVOID_CORNER_MAX_ANGLE-1, 0, -1):
-        if data["lidar"][(angle + index) % 360] < AVOID_CORNER_MIN_DISTANCE:
+    for index in range(1, 8):
+        l_dist = data["lidar"][(angle + index) % 360]
+        r_dist = data["lidar"][(angle - index) % 360]
+
+        if l_angle == 8 and l_dist < 2.5:
             l_angle = index
+            print(f"l_dist: {l_dist}")
 
-        if data["lidar"][(angle - index) % 360] < AVOID_CORNER_MIN_DISTANCE:
+        if r_angle == 8 and r_dist < 2.5:
             r_angle = index
+            print(f"r_dist: {r_dist}")
 
     if l_angle > r_angle:
-        delta = -AVOID_CORNER_SCALE_FACTOR * (AVOID_CORNER_MAX_ANGLE - r_angle)
+        delta = -1.2 * (8 - r_angle)
     else:
-        delta =  AVOID_CORNER_SCALE_FACTOR * (AVOID_CORNER_MAX_ANGLE - l_angle)
+        delta = 1.2 * (8 - l_angle)
 
+    print(delta, l_angle, r_angle)
     alpha = angle - LIDAR_HEADING - delta
 
-    steer = np.sign(alpha) * lerp(np.abs(alpha), LERP_MAP_STEER)
-    duty_cycle = steer * STEER2DC_A + STEER2DC_B
+    steer = np.sign(alpha) * lerp(np.abs(alpha), STEER_FACTOR)
+    pwm = steer * STEER2PWM_A + STEER2PWM_B
 
-    return steer, duty_cycle
+    return steer, pwm
 
 
 def compute_speed(data: Dict[str, Any], steer: float) -> Tuple[float, float]:
@@ -125,17 +130,18 @@ def compute_speed(data: Dict[str, Any], steer: float) -> Tuple[float, float]:
     Returns:
         Tuple[float, float]: computed speed and respective duty cycle.
     """
+    aperture_angle = 20
 
-    shift = -LIDAR_HEADING + APERTURE_ANGLE // 2
+    shift = -LIDAR_HEADING + aperture_angle // 2
 
-    dfront = np.mean(np.roll(data["lidar"], shift)[:APERTURE_ANGLE])
+    dfront = np.mean(np.roll(data["lidar"], shift)[:aperture_angle])
 
-    speed = (1.0 - AGGRESSIVENESS) * lerp(dfront, LERP_MAP_SPEED_DIST)
-    speed = AGGRESSIVENESS + speed * lerp(np.abs(steer), LERP_MAP_SPEED_ANGL)
+    speed = 0.7 * lerp(dfront, SPEED_FACTOR_DIST)
+    speed = 0.3 + speed * lerp(np.abs(steer), SPEED_FACTOR_ANG)
 
-    duty_cycle = speed * SPEED2DC_A + SPEED2DC_B
+    pwm = speed * SPEED2PWM_A + SPEED2PWM_B
 
-    return speed, duty_cycle
+    return speed, pwm
 
 
 def check_reverse(data: Dict[str, Any]) -> bool:
@@ -161,10 +167,10 @@ def check_reverse(data: Dict[str, Any]) -> bool:
 
         return True
 
-    LENGTH = lerp(data["serial"][0], LERP_MAP_LENGTH)
-    max_distance = np.sqrt(0.25 * WIDTH**2 + LENGTH**2)
+    HEIGHT = lerp(data["serial"][0], HEIGHT_FACTOR)
+    MAX_DIST = np.sqrt(0.25 * WIDTH**2 + HEIGHT**2)
 
-    mask = (0 < data["lidar"]) & (data["lidar"] < max_distance)
+    mask = (0 < data["lidar"]) & (data["lidar"] < MAX_DIST)
 
     distances = data["lidar"][mask]
     angles = np.deg2rad(np.arange(0, 360)[mask] - LIDAR_HEADING)
@@ -172,14 +178,15 @@ def check_reverse(data: Dict[str, Any]) -> bool:
     x = distances * np.cos(angles)
     y = distances * np.sin(angles)
 
-    mask = (np.abs(y) <= 0.5 * WIDTH) & (0.0 <= x) & (x <= LENGTH)
+    mask = (np.abs(y) <= 0.5 * WIDTH) & (0.0 <= x) & (x <= HEIGHT)
 
-    if np.count_nonzero(mask) > MIN_POINTS_TO_TRIGGER:
+    if np.count_nonzero(mask) > 8:
         reverse_counter += 1
+
     else:
         reverse_counter = 0
 
-    if reverse_counter > REVERSE_CHECK_COUNTER:
+    if reverse_counter > 8:
         reverse_counter = 0
 
         return True
@@ -205,7 +212,7 @@ def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
     interface["speed"].set_duty_cycle(7.5)
     time.sleep(0.03)
 
-    for _ in range(20):
+    for attempt in range(20):
         serial = interface["serial"].read(depth=5)
 
         if 30.0 <= serial[1]:
@@ -219,14 +226,13 @@ def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
     r_side = np.mean(distances[(LIDAR_HEADING - indices) % 360])
     l_side = np.mean(distances[(LIDAR_HEADING + indices) % 360])
 
-    steer = STEER_IN_REVERSE if r_side > l_side else -STEER_IN_REVERSE
+    steer = STEERING_LIMIT if r_side > l_side else -STEERING_LIMIT
 
-    interface["steer"].set_duty_cycle(steer * STEER2DC_A + STEER2DC_B)
-    interface["speed"].set_duty_cycle(DC_REVERSE)
+    interface["steer"].set_duty_cycle(0.7*steer * STEER2PWM_A + STEER2PWM_B)
+    interface["speed"].set_duty_cycle(PWM_REVERSE)
 
     interface["lidar"].start()
-
-    for _ in range(10):
+    for attempt in range(10):
         if serial[1] < 20.0:
             break
 
@@ -235,3 +241,4 @@ def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
     interface["speed"].set_duty_cycle(7.5)
 
     last_reverse = time.time()
+
