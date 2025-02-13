@@ -14,7 +14,7 @@ from matplotlib.widgets import Slider
 
 from matplotlib.backend_bases import KeyEvent
 
-from code_24.constants import *
+from constants import *
 
 
 WINDOW_SIZE = 8.0  # Seconds

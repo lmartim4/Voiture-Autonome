@@ -4,11 +4,11 @@ import numpy as np
 
 from pynput import keyboard
 
-from code_24.console import Console
+from console import Console
 
 from core import *
 
-from code_24.control import *
+from control import *
 
 
 console = Console()
