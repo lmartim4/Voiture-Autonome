@@ -102,9 +102,6 @@ def close() -> None:
     interface["speed"].stop()
     interface["serial"].close()
     
-
-    console.close()
-    
     try:
         interface["lidar"].stop()
         interface["lidar"].stop_motor()
@@ -113,6 +110,8 @@ def close() -> None:
     except serial.serialutil.PortNotOpenError:
         pass
     
+    console.close()
+
 def main(bypass: bool = False) -> None:
     """
     Main function to run the vehicle control logic.
@@ -152,8 +151,8 @@ def main(bypass: bool = False) -> None:
             serial = interface["serial"].read(depth=5)
             data = {"lidar": distances, "serial": serial}
 
-            steer, steer_pwm = compute_steer(data)
-            speed, speed_pwm = compute_speed(data, steer)
+            steer, steer_dc = compute_steer(data)
+            speed, speed_dc = compute_speed(data, steer)
 
             #console.info(f"{serial} {steer:.2f} deg {100 * speed:.0f}%")
 
@@ -162,8 +161,8 @@ def main(bypass: bool = False) -> None:
                 reverse(interface, data)
 
             else:
-                interface["steer"].set_duty_cycle(steer_pwm)
-                interface["speed"].set_duty_cycle(speed_pwm)
+                interface["steer"].set_duty_cycle(steer_dc)
+                interface["speed"].set_duty_cycle(speed_dc)
 
             console.log([*serial, steer, speed, distances.tolist()])
 

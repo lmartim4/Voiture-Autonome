@@ -10,8 +10,8 @@ set_appearance_mode("Dark")
 lines = []
 
 parameters = {
-    "steer": {"min": PWM_STEER_MIN, "max": PWM_STEER_MAX},
-    "speed": {"min": PWM_SPEED_MIN, "max": PWM_SPEED_MAX}
+    "steer": {"min": DC_STEER_MIN, "max": DC_STEER_MAX},
+    "speed": {"min": DC_SPEED_MIN, "max": DC_SPEED_MAX}
 }
 
 steer_pwm = PWM(channel=1, frequency=50.0)
@@ -246,9 +246,9 @@ app.mainloop()
 steer_pwm.stop()
 speed_pwm.stop()
 
-cfg["PWM_STEER_MIN"] = parameters["steer"]["min"]
-cfg["PWM_STEER_MAX"] = parameters["steer"]["max"]
-cfg["PWM_SPEED_MIN"] = parameters["speed"]["min"]
-cfg["PWM_SPEED_MAX"] = parameters["speed"]["max"]
+cfg["DC_STEER_MIN"] = parameters["steer"]["min"]
+cfg["DC_STEER_MAX"] = parameters["steer"]["max"]
+cfg["DC_SPEED_MIN"] = parameters["speed"]["min"]
+cfg["DC_SPEED_MAX"] = parameters["speed"]["max"]
 
 save_config(cfg)

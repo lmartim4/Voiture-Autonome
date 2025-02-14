@@ -11,10 +11,22 @@ CART_NAME = get_config_value(cfg, "NOM_VOITURE", "Voiture-Couleur")
 #                                                   #
 #===================================================#
 
-LIDAR_BAUDRATE   = int(get_config_value(cfg, "LIDAR_BAUDRATE", "115200"))
-LIDAR_HEADING    = int(get_config_value(cfg, "LIDAR_HEADING_DEG",  "90"))
-FIELD_OF_VIEW    = int(get_config_value(cfg, "FIELD_OF_VIEW_DEG", "120"))
-CONVOLUTION_SIZE = int(get_config_value(cfg, "CONVOLUTION_SIZE",   "31"))
+LIDAR_BAUDRATE   = int(get_config_value(cfg, "LIDAR_BAUDRATE", 115200))
+LIDAR_HEADING    = int(get_config_value(cfg, "LIDAR_HEADING_DEG",  90))
+FIELD_OF_VIEW    = int(get_config_value(cfg, "FIELD_OF_VIEW_DEG", 120))
+CONVOLUTION_SIZE = int(get_config_value(cfg, "CONVOLUTION_SIZE",   31))
+
+#===================================================#
+#                                                   #
+#              Avoid corner parameters              #
+#                                                   #
+#===================================================#
+
+AVOID_CORNER_MAX_ANGLE = int(get_config_value(cfg, "AVOID_CORNER_MAX_ANGLE", 8))   # int: degress [°]
+
+AVOID_CORNER_MIN_DISTANCE = float(get_config_value(cfg, "AVOID_CORNER_MIN_DISTANCE", 2.5))   # float: meters [m]
+
+AVOID_CORNER_SCALE_FACTOR = float(get_config_value(cfg, "AVOID_CORNER_SCALE_FACTOR",1.2))   # float: number
 
 #===================================================#
 #                                                   #
@@ -22,12 +34,12 @@ CONVOLUTION_SIZE = int(get_config_value(cfg, "CONVOLUTION_SIZE",   "31"))
 #                                                   #
 #===================================================#
 
-STEERING_LIMIT = float(get_config_value(cfg, "STEERING_LIMIT","18.0"))
-PWM_STEER_MIN =  float(get_config_value(cfg, "PWM_STEER_MIN",  "4.0"))
-PWM_STEER_MAX =  float(get_config_value(cfg, "PWM_STEER_MAX",  "8.0"))
+STEERING_LIMIT = float(get_config_value(cfg, "STEERING_LIMIT", 18.0))    # float: degrees [°]
+DC_STEER_MIN =  float(get_config_value(cfg, "DC_STEER_MIN",  4.0))       # float: duty cycle
+DC_STEER_MAX =  float(get_config_value(cfg, "DC_STEER_MAX",  8.0))       # float: duty cycle
 
-STEER2PWM_A = 0.5 * (PWM_STEER_MAX - PWM_STEER_MIN) / STEERING_LIMIT
-STEER2PWM_B = 0.5 * (PWM_STEER_MAX + PWM_STEER_MIN)
+STEER2PWM_A = 0.5 * (DC_STEER_MAX - DC_STEER_MIN) / STEERING_LIMIT
+STEER2PWM_B = 0.5 * (DC_STEER_MAX + DC_STEER_MIN)
 
 STEER_FACTOR = np.array(
     [[0.00, 0.000],
@@ -47,11 +59,13 @@ STEER_FACTOR[:, 1] *= STEERING_LIMIT
 #                                                   #
 #===================================================#
 
-PWM_SPEED_MIN = float(get_config_value(cfg , "PWM_SPEED_MIN", "7.6"))
-PWM_SPEED_MAX = float(get_config_value(cfg , "PWM_SPEED_MAX", "8.2"))
+APERTURE_ANGLE = int(get_config_value(cfg , "APERTURE_ANGLE", 20))
 
-SPEED2PWM_A = PWM_SPEED_MAX - PWM_SPEED_MIN
-SPEED2PWM_B = PWM_SPEED_MIN
+DC_SPEED_MIN = float(get_config_value(cfg , "DC_SPEED_MIN", 7.6))
+DC_SPEED_MAX = float(get_config_value(cfg , "DC_SPEED_MAX", 8.2))
+
+SPEED2DC_A = DC_SPEED_MAX - DC_SPEED_MIN
+SPEED2DC_B = DC_SPEED_MIN
 
 SPEED_FACTOR_DIST = np.array(
     [[0.00, 0.00],
@@ -75,20 +89,27 @@ SPEED_FACTOR_ANG = np.array(
 )
 
 
+AGGRESSIVENESS = float(get_config_value(cfg, "AGGRESSIVENESS", 0.3))   # float: number between 0.0 and 1.0
+
 #===================================================#
 #                                                   #
 #                Reverse parameters                 #
 #                                                   #
 #===================================================#
 
-WIDTH = 0.20
-MIN_HEIGHT = 0.28
-MAX_HEIGHT = 0.38
+WIDTH =      float(get_config_value(cfg, "WIDTH", 0.20))
+MIN_LENGTH = float(get_config_value(cfg, "MIN_LENGTH", 0.28))
+MAX_LENGTH = float(get_config_value(cfg, "MAX_LENGTH", 0.38))
 
-HEIGHT_FACTOR = np.array(
+LERP_MAP_LENGTH = np.array(
     [[0.00, 0.00],
      [0.80, 0.30],
      [1.50, 1.00]])
 
-HEIGHT_FACTOR[:, 1] = MIN_HEIGHT + (MAX_HEIGHT - MIN_HEIGHT) * HEIGHT_FACTOR[:, 1]
-PWM_REVERSE = np.interp(WIDTH, HEIGHT_FACTOR[:, 0], HEIGHT_FACTOR[:, 1])
+MIN_POINTS_TO_TRIGGER = int(get_config_value(cfg, "MIN_POINTS_TO_TRIGGER", 8))
+REVERSE_CHECK_COUNTER = int(get_config_value(cfg, "REVERSE_CHECK_COUNTER", 8))
+
+LERP_MAP_LENGTH[:, 1] = MIN_LENGTH + (MAX_LENGTH - MIN_LENGTH) * LERP_MAP_LENGTH[:, 1]
+PWM_REVERSE = np.interp(WIDTH, LERP_MAP_LENGTH[:, 0], LERP_MAP_LENGTH[:, 1])
+
+STEERING_LIMIT_IN_REVERSE = 0.7 * STEERING_LIMIT # float: degrees [°]
