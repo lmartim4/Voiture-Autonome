@@ -5,6 +5,7 @@ import numpy as np
 from pynput import keyboard
 
 from console import Console
+from camera import Camera
 
 from core import *
 
@@ -49,7 +50,8 @@ def init() -> None:
         "lidar": RPLidar("/dev/ttyUSB", baudrate=115200),
         "steer": PWM(channel=1, frequency=50.0),
         "speed": PWM(channel=0, frequency=50.0),
-        "serial": Serial("/dev/ttyACM", 115200, timeout=0.1)
+        "serial": Serial("/dev/ttyACM", 115200, timeout=0.1),
+        "camera": Camera(width=640, height=480) 
     }
 
     health = interface["lidar"].get_health()[0]
@@ -153,6 +155,10 @@ def main(bypass: bool = False) -> None:
             serial = interface["serial"].read(depth=5)
             data = {"lidar": distances, "serial": serial}
 
+            # Processamento da câmera
+            camera = interface["camera"]
+            avg_r, avg_g, count_r, count_g = camera.process_stream()
+
             steer, steer_pwm = compute_steer(data)
             speed, speed_pwm = compute_speed(data, steer)
 
@@ -166,7 +172,7 @@ def main(bypass: bool = False) -> None:
                 interface["steer"].set_duty_cycle(steer_pwm)
                 interface["speed"].set_duty_cycle(speed_pwm)
 
-            console.log([*serial, steer, speed, distances.tolist()])
+            console.log([*serial, steer_pwm, speed, distances.tolist()])
 
             distances = 0.0 * distances
 

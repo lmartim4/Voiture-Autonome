@@ -1,18 +1,12 @@
 import time
-
 import numpy as np
-
 from scipy.signal import convolve
-
 from typing import Any, Dict, Tuple
-
 from constants import *
-
+from camera import Camera  # Importe a classe Camera do módulo camera
 
 last_reverse = None
-
 reverse_counter = 0
-
 
 def stop_command() -> Tuple[float, float]:
     """
@@ -242,3 +236,30 @@ def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
 
     last_reverse = time.time()
 
+def check_reversed_camera(camera: Camera) -> bool:
+    """
+    Verifica se o carrinho está invertido (virado 180° em relação à pista)
+    utilizando os dados da câmera.
+
+    A função chama camera.process_stream() para obter:
+      - avg_r: posição média dos pixels vermelhos (parede da esquerda na orientação normal)
+      - avg_g: posição média dos pixels verdes (parede da direita na orientação normal)
+
+    Em uma orientação normal, espera-se que avg_r < avg_g. Se avg_r > avg_g,
+    a imagem indica que a parede vermelha está à direita e a verde à esquerda,
+    ou seja, o carrinho está invertido.
+
+    Args:
+        camera (Camera): Instância da classe Camera.
+
+    Returns:
+        bool: True se o carrinho estiver invertido, False caso contrário.
+    """
+    avg_r, avg_g, count_r, count_g = camera.process_stream()
+    
+    # Se algum dos valores não for detectado (ex: -1), não há informação suficiente.
+    if avg_r < 0 or avg_g < 0:
+        return False
+    
+    # Em orientação normal, avg_r deve ser menor que avg_g.
+    return avg_r > avg_g
