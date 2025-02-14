@@ -1,5 +1,13 @@
+from config import load_config
+
 import numpy as np
 
+cfg = load_config()
+
+
+CART_NAME = cfg.get("NOM_VOITURE", "Voiture-Katchau")
+
+print(f"Loading config for {CART_NAME}")
 
 #===================================================#
 #                                                   #
@@ -7,8 +15,9 @@ import numpy as np
 #                                                   #
 #===================================================#
 
-LIDAR_HEADING =  90   # int: degrees [°]
+LIDAR_BAUDRATE = int(cfg.get("LIDAR_BAUDRATE", "115200"))
 
+LIDAR_HEADING =  90   # int: degrees [°]
 FIELD_OF_VIEW = 120   # int: degrees [°]
 
 CONVOLUTION_SIZE = 31
@@ -22,8 +31,8 @@ CONVOLUTION_SIZE = 31
 
 STEERING_LIMIT = 18.0
 
-PWM_STEER_MIN = 5.3
-PWM_STEER_MAX = 7.9
+PWM_STEER_MIN = float(cfg.get("PWM_STEER_MIN", "4"))
+PWM_STEER_MAX = float(cfg.get("PWM_STEER_MAX", "8"))
 
 STEER2PWM_A = 0.5 * (PWM_STEER_MAX - PWM_STEER_MIN) / STEERING_LIMIT
 STEER2PWM_B = 0.5 * (PWM_STEER_MAX + PWM_STEER_MIN)
@@ -46,8 +55,8 @@ STEER_FACTOR[:, 1] *= STEERING_LIMIT
 #                                                   #
 #===================================================#
 
-PWM_SPEED_MIN = 7.6
-PWM_SPEED_MAX = 8.6
+PWM_SPEED_MIN = float(cfg.get("PWM_SPEED_MIN", "7.6"))
+PWM_SPEED_MAX = float(cfg.get("PWM_SPEED_MAX", "8.2"))
 
 SPEED2PWM_A = PWM_SPEED_MAX - PWM_SPEED_MIN
 SPEED2PWM_B = PWM_SPEED_MIN
@@ -94,3 +103,6 @@ HEIGHT_FACTOR = np.array(
 HEIGHT_FACTOR[:, 1] = MIN_HEIGHT + (MAX_HEIGHT - MIN_HEIGHT) * HEIGHT_FACTOR[:, 1]
 
 PWM_REVERSE = 6.3
+
+
+print(LIDAR_BAUDRATE)
