@@ -34,7 +34,7 @@ def test_wave_function_collapse():
             print(f"Agora, no passo {step}, colapsamos a célula ({col}, {row}) para ", grid.grid[row][col].possibilities, " ---------------- \n")
             grid.plot_bitmap(tile_resolution=50)  # Mostrar estado após cada passo
 
-        wfc.collapse(step_callback=step_callback)
+        wfc.collapse(step_callback=None)
     except RuntimeError as e:
         print(f"Erro ao resolver a grade: {e}")
         print("Estado atual da grade:")
