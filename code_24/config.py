@@ -1,14 +1,31 @@
-def load_config(filename="config.txt"):
-    cfg = {}
-    with open(filename, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            
-            if "=" in line:
-                key, value = line.split("=", 1)
-                key = key.strip()
-                value = value.strip()
-                cfg[key] = value
-    return cfg
+import json
+import os
+
+CONFIG_PATH = "./config.json"
+
+def get_config_value(cfg, key, default_value):
+    """
+    Retrieve a config value by `key`.
+    If `key` is missing, store `default_value` in config and return it.
+    """
+
+    if key not in cfg:
+        cfg[key] = default_value
+        save_config(cfg)
+
+    return cfg[key]
+
+
+def load_config():
+    # Load the JSON config into a dictionary
+    print(f"Loading Config from {CONFIG_PATH}")
+    
+    if os.path.exists(CONFIG_PATH):
+        with open(CONFIG_PATH, 'r') as f:
+            return json.load(f)
+    
+    return {}
+
+def save_config(config_data):
+    with open(CONFIG_PATH, 'w') as f:
+        json.dump(config_data, f, indent=4)

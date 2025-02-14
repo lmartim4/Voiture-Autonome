@@ -93,14 +93,6 @@ def close() -> None:
 
     console.info("Closing the interface elements")
 
-    try:
-        interface["lidar"].stop()
-        interface["lidar"].stop_motor()
-        interface["lidar"].disconnect()
-
-    except serial.serialutil.PortNotOpenError:
-        pass
-
     steer_pwm, speed_pwm = stop_command()
 
     interface["steer"].set_duty_cycle(steer_pwm)
@@ -108,12 +100,19 @@ def close() -> None:
 
     interface["steer"].stop()
     interface["speed"].stop()
-
     interface["serial"].close()
+    
 
     console.close()
+    
+    try:
+        interface["lidar"].stop()
+        interface["lidar"].stop_motor()
+        interface["lidar"].disconnect()
 
-
+    except serial.serialutil.PortNotOpenError:
+        pass
+    
 def main(bypass: bool = False) -> None:
     """
     Main function to run the vehicle control logic.
@@ -156,7 +155,7 @@ def main(bypass: bool = False) -> None:
             steer, steer_pwm = compute_steer(data)
             speed, speed_pwm = compute_speed(data, steer)
 
-            console.info(f"{serial} {steer:.2f} deg {100 * speed:.0f}%")
+            #console.info(f"{serial} {steer:.2f} deg {100 * speed:.0f}%")
 
             if check_reverse(data):
                 console.info("Reverse")
@@ -173,7 +172,7 @@ def main(bypass: bool = False) -> None:
     except (KeyboardInterrupt, Exception) as error:
         if not isinstance(error, KeyboardInterrupt):
             traceback.print_exc()
-
+        
         if isinstance(error, RPLidarException):
             main(bypass=True)
 

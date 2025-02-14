@@ -1,0 +1,12 @@
+{
+    "LIDAR_BAUDRATE": "256000",
+    "LIDAR_HEADING_DEG": "90",
+    "FIELD_OF_VIEW_DEG": "120",
+    "CONVOLUTION_SIZE": "31",
+    "STEERING_LIMIT": "18.0",
+    "PWM_STEER_MIN": 4.0,
+    "PWM_STEER_MAX": 10.0,
+    "PWM_SPEED_MIN": 7.6,
+    "PWM_SPEED_MAX": 9.0,
+    "NOM_VOITURE": "Voiture Bleue"
+}

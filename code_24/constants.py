@@ -1,13 +1,9 @@
-from config import load_config
-
+from config import *
+from console import Console
 import numpy as np
 
 cfg = load_config()
-
-
-CART_NAME = cfg.get("NOM_VOITURE", "Voiture-Katchau")
-
-print(f"Loading config for {CART_NAME}")
+CART_NAME = get_config_value(cfg, "NOM_VOITURE", "Voiture-Couleur")
 
 #===================================================#
 #                                                   #
@@ -15,13 +11,10 @@ print(f"Loading config for {CART_NAME}")
 #                                                   #
 #===================================================#
 
-LIDAR_BAUDRATE = int(cfg.get("LIDAR_BAUDRATE", "115200"))
-
-LIDAR_HEADING =  90   # int: degrees [°]
-FIELD_OF_VIEW = 120   # int: degrees [°]
-
-CONVOLUTION_SIZE = 31
-
+LIDAR_BAUDRATE   = int(get_config_value(cfg, "LIDAR_BAUDRATE", "115200"))
+LIDAR_HEADING    = int(get_config_value(cfg, "LIDAR_HEADING_DEG",  "90"))
+FIELD_OF_VIEW    = int(get_config_value(cfg, "FIELD_OF_VIEW_DEG", "120"))
+CONVOLUTION_SIZE = int(get_config_value(cfg, "CONVOLUTION_SIZE",   "31"))
 
 #===================================================#
 #                                                   #
@@ -29,10 +22,9 @@ CONVOLUTION_SIZE = 31
 #                                                   #
 #===================================================#
 
-STEERING_LIMIT = 18.0
-
-PWM_STEER_MIN = float(cfg.get("PWM_STEER_MIN", "4"))
-PWM_STEER_MAX = float(cfg.get("PWM_STEER_MAX", "8"))
+STEERING_LIMIT = float(get_config_value(cfg, "STEERING_LIMIT","18.0"))
+PWM_STEER_MIN =  float(get_config_value(cfg, "PWM_STEER_MIN",  "4.0"))
+PWM_STEER_MAX =  float(get_config_value(cfg, "PWM_STEER_MAX",  "8.0"))
 
 STEER2PWM_A = 0.5 * (PWM_STEER_MAX - PWM_STEER_MIN) / STEERING_LIMIT
 STEER2PWM_B = 0.5 * (PWM_STEER_MAX + PWM_STEER_MIN)
@@ -55,8 +47,8 @@ STEER_FACTOR[:, 1] *= STEERING_LIMIT
 #                                                   #
 #===================================================#
 
-PWM_SPEED_MIN = float(cfg.get("PWM_SPEED_MIN", "7.6"))
-PWM_SPEED_MAX = float(cfg.get("PWM_SPEED_MAX", "8.2"))
+PWM_SPEED_MIN = float(get_config_value(cfg , "PWM_SPEED_MIN", "7.6"))
+PWM_SPEED_MAX = float(get_config_value(cfg , "PWM_SPEED_MAX", "8.2"))
 
 SPEED2PWM_A = PWM_SPEED_MAX - PWM_SPEED_MIN
 SPEED2PWM_B = PWM_SPEED_MIN
@@ -90,19 +82,13 @@ SPEED_FACTOR_ANG = np.array(
 #===================================================#
 
 WIDTH = 0.20
-
 MIN_HEIGHT = 0.28
 MAX_HEIGHT = 0.38
 
 HEIGHT_FACTOR = np.array(
     [[0.00, 0.00],
      [0.80, 0.30],
-     [1.50, 1.00]]
-)
+     [1.50, 1.00]])
 
 HEIGHT_FACTOR[:, 1] = MIN_HEIGHT + (MAX_HEIGHT - MIN_HEIGHT) * HEIGHT_FACTOR[:, 1]
-
-PWM_REVERSE = 6.3
-
-
-print(LIDAR_BAUDRATE)
+PWM_REVERSE = np.interp(WIDTH, HEIGHT_FACTOR[:, 0], HEIGHT_FACTOR[:, 1])

@@ -1,18 +1,11 @@
 import time
-
 import numpy as np
-
 from scipy.signal import convolve
-
 from typing import Any, Dict, Tuple
-
 from constants import *
 
-
 last_reverse = None
-
 reverse_counter = 0
-
 
 def stop_command() -> Tuple[float, float]:
     """
@@ -22,7 +15,6 @@ def stop_command() -> Tuple[float, float]:
         Tuple[float, float]: commands to stop both actuators.
     """
     return STEER2PWM_B, SPEED2PWM_B
-
 
 def filter(distances: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -99,18 +91,18 @@ def compute_steer(data: Dict[str, Any]) -> Tuple[float, float]:
 
         if l_angle == 8 and l_dist < 2.5:
             l_angle = index
-            print(f"l_dist: {l_dist}")
+            #print(f"l_dist: {l_dist}")
 
         if r_angle == 8 and r_dist < 2.5:
             r_angle = index
-            print(f"r_dist: {r_dist}")
+            #print(f"r_dist: {r_dist}")
 
     if l_angle > r_angle:
         delta = -1.2 * (8 - r_angle)
     else:
         delta = 1.2 * (8 - l_angle)
 
-    print(delta, l_angle, r_angle)
+    #print(delta, l_angle, r_angle)
     alpha = angle - LIDAR_HEADING - delta
 
     steer = np.sign(alpha) * lerp(np.abs(alpha), STEER_FACTOR)
@@ -232,6 +224,7 @@ def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
     interface["speed"].set_duty_cycle(PWM_REVERSE)
 
     interface["lidar"].start()
+    
     for attempt in range(10):
         if serial[1] < 20.0:
             break
