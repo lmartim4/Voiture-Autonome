@@ -18,10 +18,10 @@ class Tile:
             for orientation in range(4)
         ]
 
-        # # Eliminer les redondances en "empty"
+        # Eliminer les redondances en "empty"
         self.possibilities = [p for p in self.possibilities if not (p["tile_definition"].name == "empty" and p["orientation"] > 0)]
         
-        # # Eliminer les redondances en "straight"
+        # Eliminer les redondances en "straight"
         self.possibilities = [p for p in self.possibilities if not (p["tile_definition"].name == "straight" and p["orientation"] in [2,3])]
 
         # for possibility in self.possibilities:

@@ -1,10 +1,10 @@
-import random 
 import numpy as np
-# import sys
-# np.set_printoptions(threshold=sys.maxsize)
-from tile import Tile
-import matplotlib.pyplot as plt
+import cv2
 
+from tile import Tile
+
+import matplotlib
+matplotlib.use("GTK3Agg")
 import matplotlib.pyplot as plt
 
 def plot_debug_grid(grid):
@@ -63,19 +63,18 @@ class Grid:
     """
     Représente la grille contenant des instances de Tile.
     """
-    def __init__(self, rows, cols, tile_definitions, global_params):
+    def __init__(self, tile_definitions, global_params):
         """
         Initialise la grille.
 
-        rows: int - Nombre de lignes.
-        cols: int - Nombre de colonnes.
         tile_definitions: list - Liste des TileDefinition.
         global_params: dict - Paramètres globaux pour les tuiles.
         """
-        self.rows = rows
-        self.cols = cols
+        self.rows = global_params["n_rows"]
+        self.cols = global_params["n_cols"]
+        self.tile_resolution = global_params["tile_resolution"]
         self.global_params = global_params
-        self.grid = [[Tile(tile_definitions) for _ in range(cols)] for _ in range(rows)]
+        self.grid = [[Tile(tile_definitions) for _ in range(self.cols)] for _ in range(self.rows)]
 
     def simulate_collapse(self):
         """
@@ -85,7 +84,7 @@ class Grid:
             for col in range(self.cols):
                 self.grid[row][col].collapse()
 
-    def generate_bitmap(self, tile_resolution):
+    def generate_bitmap(self):
         """
         Gera o bitmap completo da pista com base no grid atual.
 
@@ -93,10 +92,10 @@ class Grid:
         np.ndarray - Bitmap representando toda a pista.
         """
         tile_size = self.global_params.get('tile_size', 1)
-        bitmap = np.zeros((self.rows * tile_resolution, self.cols * tile_resolution))
+        bitmap = np.zeros((self.rows * self.tile_resolution, self.cols * self.tile_resolution))
 
         # Escala para mapear o grid global para o bitmap
-        scale = tile_resolution / tile_size
+        scale = self.tile_resolution / tile_size
 
         for row in range(self.rows):
             for col in range(self.cols):
@@ -110,7 +109,6 @@ class Grid:
                 # Gerar bitmap para a tile específica
                 local_bitmap = tile.generate_bitmap(
                     global_params=self.global_params,
-                    resolution=tile_resolution,
                     grid_size=int(tile_size * scale),
                     orientation=orientation
                 )
@@ -126,15 +124,44 @@ class Grid:
                             bitmap[offset_y + i, offset_x + j] = 1
 
         return bitmap
+    
+    def dilate_track(self,bitmap):
+        """
+        Aplica uma dilatação no bitmap da pista para "engordar" as linhas.
+
+        bitmap: np.ndarray - Matriz representando a pista (0 = fundo, 1 = pista).
+        kernel_size: int - Tamanho do kernel para a dilatação.
+        iterations: int - Número de iterações da dilatação.
+
+        Retorna:
+        np.ndarray - Bitmap dilatado.
+        """
+        
+        kernel_size = self.global_params["dilation_kernel_size"]
+        iterations = self.global_params["dilation_iter"]
+
+        # Converter o bitmap para formato binário (0 e 255)
+        binary_image = (bitmap * 255).astype(np.uint8)
+
+        # Criar um kernel (elemento estruturante) para a dilatação
+        kernel = np.ones((kernel_size, kernel_size), np.uint8)
+
+        # Aplicar a dilatação
+        dilated_image = cv2.dilate(binary_image, kernel, iterations=iterations)
+
+        return dilated_image
+
  
-    def plot_bitmap(self, tile_resolution):
+    def plot_bitmap(self):
         """
         Affiche le bitmap généré pour la piste.
         """
-        bitmap = self.generate_bitmap(tile_resolution=tile_resolution)
-        plot_debug_grid(self)
+        bitmap = self.generate_bitmap()
+        bitmap = self.dilate_track(bitmap)
         plt.imshow(bitmap, cmap='Greys', origin='lower')
         plt.title("Bitmap de la piste")
         plt.xlabel("X")
         plt.ylabel("Y")
         plt.show()
+
+        # plot_debug_grid(self)

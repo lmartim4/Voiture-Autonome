@@ -1,5 +1,3 @@
-import random
-
 class WaveFunctionCollapse:
     def __init__(self, grid, tile_definitions):
         """
@@ -120,7 +118,7 @@ class WaveFunctionCollapse:
 
             # Colapsar a célula com o menor número de possibilidades
             row, col = next_cell
-            print("Originalmente estavamos em ", self.grid.grid[row][col].possibilities, " em (", col, ", ", row, ") ---------------- \n" )
+            # print("Originalmente estavamos em ", self.grid.grid[row][col].possibilities, " em (", col, ", ", row, ") ---------------- \n" )
             self.grid.grid[row][col].collapse()
 
             # Callback para debug

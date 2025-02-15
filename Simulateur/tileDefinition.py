@@ -49,7 +49,7 @@ class TileDefinition:
 
         return cls(config['name'], equations, domains, config['sockets'])
 
-    def evaluate(self, orientation, global_params, resolution=100):
+    def evaluate(self, orientation, global_params):
         """
         Génère les points (tableaux numpy) de la géométrie de la piste à partir des équations.
         """
@@ -62,7 +62,7 @@ class TileDefinition:
             domain_size = domain[1] - domain[0]
 
             # Ajuster la résolution proportionnellement à la taille du domaine
-            local_resolution = int(resolution * (domain_size / T))
+            local_resolution = int(global_params["tile_resolution"]* (domain_size / T))
 
             # Générer les valeurs de x dans le domaine
             x_vals = np.linspace(domain[0], domain[1], local_resolution)
@@ -101,7 +101,7 @@ class TileDefinition:
 
         return rotated_points
 
-    def generate_bitmap(tile, global_params, resolution=500, grid_size=100, orientation=0):
+    def generate_bitmap(tile, global_params, grid_size=100, orientation=0):
         """
         Génère un bitmap pour une seule tuile.
 
@@ -122,7 +122,7 @@ class TileDefinition:
         scale = grid_size / tile_size
 
         # Générer les points pour l'orientation spécifiée
-        points = tile.evaluate(orientation=orientation, resolution=resolution, global_params=global_params)
+        points = tile.evaluate(orientation=orientation, global_params=global_params)
 
         # Mapper les points sur le bitmap
         for side, pts in points.items():

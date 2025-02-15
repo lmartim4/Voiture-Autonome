@@ -1,7 +1,13 @@
 {
     "global_params": {
+        "debug": false,
+        "n_rows" : 15,
+        "n_cols" : 15,
         "tile_size": 1,
-        "track_width": 0.5
+        "track_width": 0.5,
+        "tile_resolution": 500,
+        "dilation_kernel_size": 12,
+        "dilation_iter" : 3
     },
     "tiles": [
         {
