@@ -23,9 +23,7 @@ CONVOLUTION_SIZE = int(get_config_value(cfg, "CONVOLUTION_SIZE",   31))
 #===================================================#
 
 AVOID_CORNER_MAX_ANGLE = int(get_config_value(cfg, "AVOID_CORNER_MAX_ANGLE", 8))   # int: degress [°]
-
 AVOID_CORNER_MIN_DISTANCE = float(get_config_value(cfg, "AVOID_CORNER_MIN_DISTANCE", 2.5))   # float: meters [m]
-
 AVOID_CORNER_SCALE_FACTOR = float(get_config_value(cfg, "AVOID_CORNER_SCALE_FACTOR",1.2))   # float: number
 
 #===================================================#
@@ -34,9 +32,16 @@ AVOID_CORNER_SCALE_FACTOR = float(get_config_value(cfg, "AVOID_CORNER_SCALE_FACT
 #                                                   #
 #===================================================#
 
-STEERING_LIMIT = float(get_config_value(cfg, "STEERING_LIMIT", 18.0))    # float: degrees [°]
-DC_STEER_MIN =  float(get_config_value(cfg, "DC_STEER_MIN",  4.0))       # float: duty cycle
-DC_STEER_MAX =  float(get_config_value(cfg, "DC_STEER_MAX",  8.0))       # float: duty cycle
+#  In a standard servo control setup, the signal has a total
+#  period of 20 ms, which corresponds to a frequency of 50 Hz.
+#  A 1 ms “ON” pulse during that 20 ms frame is 5% of the total
+#  cycle (1 ms ÷ 20 ms × 100%), whereas a 2 ms pulse is 10% (2 ms ÷ 20 ms × 100%).
+#  In other words, going from 1 ms to 2 ms within each 20 ms cycle corresponds
+#  roughly to rotating the servo horn from one extreme to the other.
+
+STEERING_LIMIT = float(get_config_value(cfg, "STEERING_LIMIT", 18.0)) # float: degrees [°]
+DC_STEER_MIN =  float(get_config_value(cfg, "DC_STEER_MIN",  5.0))    # float: duty cycle
+DC_STEER_MAX =  float(get_config_value(cfg, "DC_STEER_MAX",  10.0))   # float: duty cycle
 
 STEER2PWM_A = 0.5 * (DC_STEER_MAX - DC_STEER_MIN) / STEERING_LIMIT
 STEER2PWM_B = 0.5 * (DC_STEER_MAX + DC_STEER_MIN)
@@ -112,4 +117,4 @@ REVERSE_CHECK_COUNTER = int(get_config_value(cfg, "REVERSE_CHECK_COUNTER", 8))
 LERP_MAP_LENGTH[:, 1] = MIN_LENGTH + (MAX_LENGTH - MIN_LENGTH) * LERP_MAP_LENGTH[:, 1]
 PWM_REVERSE = np.interp(WIDTH, LERP_MAP_LENGTH[:, 0], LERP_MAP_LENGTH[:, 1])
 
-STEERING_LIMIT_IN_REVERSE = 0.7 * STEERING_LIMIT # float: degrees [°]
+STEERING_LIMIT_IN_REVERSE = STEERING_LIMIT # float: degrees [°]

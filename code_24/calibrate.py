@@ -86,6 +86,13 @@ def changed_controllers(selector: str) -> None:
     if min_value is None or max_value is None:
         return
 
+    # ---------------------------
+    # CLAMP LOGIC FOR STEER ONLY
+    # ---------------------------
+    if selector == "steer":
+        min_value = max(5.0, min(min_value, 10.0))
+        max_value = max(5.0, min(max_value, 10.0))
+
     parameters[selector] ["min"] = min_value
     parameters[selector] ["max"] = max_value
 

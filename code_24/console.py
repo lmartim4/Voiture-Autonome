@@ -1,11 +1,7 @@
 import os
-
 import pyperclip
-
 from typing import Any, List
-
 from datetime import datetime
-
 
 NORMAL = "\33[0m"
 GREEN = "\33[32m"

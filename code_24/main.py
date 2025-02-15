@@ -1,22 +1,14 @@
 import traceback
-
 import numpy as np
-
 from pynput import keyboard
-
 from console import Console
-
 from core import *
-
 from control import *
-
 
 console = Console()
 
 running = False
-
 interface = None
-
 
 def on_press(key: keyboard.Key) -> None:
     """
@@ -33,7 +25,6 @@ def on_press(key: keyboard.Key) -> None:
 
         console.info("Running...")
         console.info("Press CTRL+C to stop the code")
-
 
 listener = keyboard.Listener(on_press=on_press)
 
@@ -64,10 +55,10 @@ def init() -> None:
 
     time.sleep(0.5)
 
-    steer_pwm, speed_pwm = stop_command()
+    steer_dc, speed_dc = stop_command()
 
-    interface["steer"].set_duty_cycle(steer_pwm)
-    interface["speed"].set_duty_cycle(speed_pwm)
+    interface["steer"].set_duty_cycle(steer_dc)
+    interface["speed"].set_duty_cycle(speed_dc)
 
     interface["serial"].read(depth=5)
 
@@ -77,7 +68,8 @@ def init() -> None:
         console.info("Serial comm is not responding, so closing it")
 
     console.info("Press ENTER to start the code")
-
+    
+    #Checking for Ctrl + C to end program
     try:
         listener.start()
     except RuntimeError:
@@ -93,10 +85,10 @@ def close() -> None:
 
     console.info("Closing the interface elements")
 
-    steer_pwm, speed_pwm = stop_command()
+    steer_dc, speed_dc = stop_command()
 
-    interface["steer"].set_duty_cycle(steer_pwm)
-    interface["speed"].set_duty_cycle(speed_pwm)
+    interface["steer"].set_duty_cycle(steer_dc)
+    interface["speed"].set_duty_cycle(speed_dc)
 
     interface["steer"].stop()
     interface["speed"].stop()
@@ -154,12 +146,11 @@ def main(bypass: bool = False) -> None:
             steer, steer_dc = compute_steer(data)
             speed, speed_dc = compute_speed(data, steer)
 
-            #console.info(f"{serial} {steer:.2f} deg {100 * speed:.0f}%")
+            console.info(f"{serial} {steer:.2f} deg {100 * speed:.0f}%")
 
             if check_reverse(data):
                 console.info("Reverse")
                 reverse(interface, data)
-
             else:
                 interface["steer"].set_duty_cycle(steer_dc)
                 interface["speed"].set_duty_cycle(speed_dc)

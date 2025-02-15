@@ -1,16 +1,10 @@
 import os
-
 import serial
-
 from typing import List
-
 from rplidar import RPLidar, RPLidarException
 
-
 RPI5 = True
-
 CHIP_PATH = f"/sys/class/pwm/pwmchip{2 if RPI5 else 0}"
-
 
 class PWM:
     def __init__(self, channel: int, frequency: float) -> None:
