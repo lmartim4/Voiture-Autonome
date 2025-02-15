@@ -194,13 +194,15 @@ def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
     """
 
     global last_reverse
-
+    
     interface["lidar"].stop()
 
+    #Setting ESC in reverse mode
     interface["speed"].set_duty_cycle(7.0)
     time.sleep(0.03)
     interface["speed"].set_duty_cycle(7.5)
     time.sleep(0.03)
+    #end of setting ESC in reverse mode
 
     for _ in range(20):
         serial = interface["serial"].read(depth=5)

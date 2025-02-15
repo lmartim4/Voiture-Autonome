@@ -3,7 +3,7 @@ from console import Console
 import numpy as np
 
 cfg = load_config()
-CART_NAME = get_config_value(cfg, "NOM_VOITURE", "Voiture-Couleur")
+NOM_VOITURE = get_config_value(cfg, "NOM_VOITURE", "Voiture-Couleur")
 
 #===================================================#
 #                                                   #
@@ -22,8 +22,8 @@ CONVOLUTION_SIZE = int(get_config_value(cfg, "CONVOLUTION_SIZE",   31))
 #                                                   #
 #===================================================#
 
-AVOID_CORNER_MAX_ANGLE = int(get_config_value(cfg, "AVOID_CORNER_MAX_ANGLE", 8))   # int: degress [°]
-AVOID_CORNER_MIN_DISTANCE = float(get_config_value(cfg, "AVOID_CORNER_MIN_DISTANCE", 2.5))   # float: meters [m]
+AVOID_CORNER_MAX_ANGLE = int(get_config_value(cfg, "AVOID_CORNER_MAX_ANGLE", 8))            # int: degress [°]
+AVOID_CORNER_MIN_DISTANCE = float(get_config_value(cfg, "AVOID_CORNER_MIN_DISTANCE", 2.5))  # float: meters [m]
 AVOID_CORNER_SCALE_FACTOR = float(get_config_value(cfg, "AVOID_CORNER_SCALE_FACTOR",1.2))   # float: number
 
 #===================================================#
@@ -94,7 +94,7 @@ SPEED_FACTOR_ANG = np.array(
 )
 
 
-AGGRESSIVENESS = float(get_config_value(cfg, "AGGRESSIVENESS", 0.3))   # float: number between 0.0 and 1.0
+AGGRESSIVENESS = float(get_config_value(cfg, "AGGRESSIVENESS", 0.7))   # float: number between 0.0 and 1.0
 
 #===================================================#
 #                                                   #
@@ -115,6 +115,8 @@ MIN_POINTS_TO_TRIGGER = int(get_config_value(cfg, "MIN_POINTS_TO_TRIGGER", 8))
 REVERSE_CHECK_COUNTER = int(get_config_value(cfg, "REVERSE_CHECK_COUNTER", 8))
 
 LERP_MAP_LENGTH[:, 1] = MIN_LENGTH + (MAX_LENGTH - MIN_LENGTH) * LERP_MAP_LENGTH[:, 1]
-PWM_REVERSE = np.interp(WIDTH, LERP_MAP_LENGTH[:, 0], LERP_MAP_LENGTH[:, 1])
+#PWM_REVERSE = np.interp(WIDTH, LERP_MAP_LENGTH[:, 0], LERP_MAP_LENGTH[:, 1])
+
+PWM_REVERSE = 6.3
 
 STEERING_LIMIT_IN_REVERSE = STEERING_LIMIT # float: degrees [°]

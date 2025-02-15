@@ -68,6 +68,7 @@ class PWM:
 
         Args:
             dc (float): duty cycle percentage.
+            dc usually in this range: [5.0, 10.0]
         """
 
         active = int(self.period * dc / 100.0)
