@@ -283,13 +283,33 @@ class Grid:
 
         self.bitmap = bitmap
     
+    # Define button click behavior
+    def on_key(self, event):
+        if event.key == 'a':  # Save the track
+            plt.imsave(f"track{self.track_number}.png", self.bitmap, cmap='Greys')
+            print(f"Track saved as 'track{self.track_number}.png'")
+            self.track_number += 1 
+            plt.close(self.fig)
+        elif event.key == 'n':  # Generate new track
+            plt.close(self.fig)  # Close the figure and generate a new one
+        elif event.key == 'c':
+            plt.close(self.fig)
+            self.track_number = None 
+
+    
     def plot_bitmap(self, debug=False):
         """
         Displays the generated bitmap of the track.
         """
-        plt.imshow(self.bitmap, cmap='Greys', origin='lower')
+        # Create a figure with buttons
+        self.fig, ax = plt.subplots()
+
+        ax.imshow(self.bitmap, cmap='Greys', origin='lower')
         plt.title("Track Bitmap")
         plt.xlabel("X")
         plt.ylabel("Y")
-        plt.show(block=not debug)
+        
+        # Connect the key press event 
+        self.fig.canvas.mpl_connect('key_press_event', self.on_key)
 
+        plt.show(block=not debug)

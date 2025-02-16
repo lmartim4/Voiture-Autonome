@@ -1,14 +1,16 @@
 import json
+import matplotlib.pyplot as plt
 from tileDefinition import TileDefinition
 from track import Grid
 from trackGenerator import WaveFunctionCollapse
+import numpy as np
 
-def test_wave_function_collapse():
+def generate_and_display_track():
     """
-    Basic test for the implementation of Wave Function Collapse (WFC).
+    Generates a track using WFC and displays it, allowing the user to save or generate a new one.
     """
     # Load the JSON configuration file
-    with open('configs/extended_tile_config.json', 'r') as file:
+    with open('configs/tile_config.json', 'r') as file:
         data = json.load(file)
 
     # Extract global parameters and tiles
@@ -19,27 +21,31 @@ def test_wave_function_collapse():
     # Create tile definitions
     tile_definitions = [TileDefinition.from_config(tile, global_params) for tile in tiles]
 
-    # Initialize the grid
-    grid = Grid(tile_definitions=tile_definitions, global_params=global_params)
+    track_number = 0
+    while True:  # Loop until the user closes the window
+        # Initialize the grid
+        grid = Grid(tile_definitions=tile_definitions, global_params=global_params)
 
-    # Instantiate WFC
-    wfc = WaveFunctionCollapse(grid, tile_definitions)
+        # Instantiate WFC
+        wfc = WaveFunctionCollapse(grid, tile_definitions)
 
-    # Execute WFC
-    try:
-        wfc.collapse(debug=debug)
-    except RuntimeError as e:
-        print(f"Error while solving the grid: {e}")
-        print("Current grid state:")
-        grid.plot_bitmap()  # Show the current grid state even in case of an error
-        return
+        # Execute WFC
+        try:
+            wfc.collapse(debug=data["debug"])
+        except RuntimeError as e:
+            print(f"Error while solving the grid: {e}")
+            print("Current grid state:")
+            grid.plot_bitmap()
+            continue  # Retry on failure
 
-    grid.generate_bitmap()
-    # Generate and plot the final track bitmap
-    grid.plot_bitmap()
-    # grid.plot_bitmap(block=False)
-    # grid.plot_debug_grid()
+        # Generate the bitmap
+        grid.track_number = track_number
+        grid.generate_bitmap()
+        grid.plot_bitmap(debug=debug)
+        track_number = grid.track_number
+
+        if track_number is None:
+            break
 
 if __name__ == "__main__":
-    test_wave_function_collapse()
-
+    generate_and_display_track()
