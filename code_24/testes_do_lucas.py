@@ -6,21 +6,21 @@ import threading
 from pynput import keyboard
 from console import Console
 from core import RPLidar, Serial, PWM, RPLidarException
-from control import compute_speed, stop_command
+from control import compute_speed, stop_command, filter, transform_back, compute_steer, compute_speed, check_reverse, get_nonzero_points_in_hitbox
 from constants import *
 
 console = Console()
 
 lidarGlobal = None
-
 running = False
 interface = None
 
 # Global variable to store the last serial data read.
 last_serial_data = None
 
-# Event to signal the serial reader thread to stop.
-stop_serial_task = threading.Event()
+# We'll create these as globals so we can reinitialize them on restart.
+stop_serial_task = None
+serial_thread = None
 
 distancia_maxima_re = 30
 
@@ -38,21 +38,25 @@ class LidarInterface:
 
     def process_scan(self, scan):
         """Process a single lidar scan and update distances."""
-        # Convert scan to a NumPy array and ignore the first column (angle)
         scan = np.asarray(scan)[:, 1:]
         
         # Get indices from the first column (angles)
         indices = np.round(scan[:, 0]).astype(int)
         indices = np.clip(indices, 0, 359)
         
+        # Exclude angles from 0 to 90 and from 270 to 360 (here using 0-180 as in your code)
+        valid_indices = (indices > 0) & (indices < 180)
+        scan = scan[valid_indices]
+        indices = indices[valid_indices]
+        
         # Update distances (convert mm to meters)
         self.distances[indices] = scan[:, 1] / 1000.0
         
-        # Fill in gaps: if a distance is zero, use the previous valid reading
+        # (The loop below doesn’t really fill any gap; you might want to improve this if needed)
         for index in range(1, 360):
             if self.distances[index] == 0.0:
-                self.distances[index] = self.distances[index - 1]
-
+                self.distances[index] = 0.0
+        
         return self.distances.copy()
 
     def iter_processed_scans(self):
@@ -65,8 +69,9 @@ class LidarInterface:
             self.lidar.stop()
             self.lidar.stop_motor()
             self.lidar.disconnect()
-        except Exception as e:
-            console.error(f"Error shutting down Lidar: {e}")
+        except RPLidarException:
+            self.lidar.clean_input()
+            pass
 
 class KeyboardController:
     def __init__(self, console, interface):
@@ -102,7 +107,8 @@ class KeyboardController:
     def on_release(self, key):
         try:
             if key.char in ['a', 'd']:
-                self.interface["steer"].set_duty_cycle((DC_STEER_MAX + DC_STEER_MIN)/2)  # Volta para frente ao soltar a ou d
+                # Return steering to neutral
+                self.interface["steer"].set_duty_cycle((DC_STEER_MAX + DC_STEER_MIN)/2)
         except AttributeError:
             pass
 
@@ -120,7 +126,7 @@ class KeyboardController:
         self.interface["speed"].set_duty_cycle(DC_SPEED_MAX)
     
     def backward(self):
-        reverse(interface)
+        reverse(self.interface)
         
     def left(self):
         self.console.info("Turning left!")
@@ -130,20 +136,10 @@ class KeyboardController:
         self.console.info("Turning right!")
         self.interface["steer"].set_duty_cycle(DC_STEER_MAX)
         
-def on_press(key: keyboard.Key):
-    global running
-
-    if key == keyboard.Key.enter and not running:
-        running = True
-        console.info("Running...")
-        console.info("Press CTRL+C to stop the code")
-
-listener = keyboard.Listener(on_press=on_press)
-
 last_reverse = 0.0
 
 def reverse(interface):
-    global last_reverse
+    global last_reverse, last_serial_data
 
     if time.time() - last_reverse < 1:
         return
@@ -151,68 +147,43 @@ def reverse(interface):
     last_reverse = time.time()
     distanca_do_sensor = None
     
-    #interface["lidar"].stop()
-
-    # Nao tocar: perform minor adjustments before reversing
+    # Minor adjustments before reversing
     interface["speed"].set_duty_cycle(7.0)
     time.sleep(0.03)
     interface["speed"].set_duty_cycle(7.5)
     time.sleep(0.03)
-    # fim do nao tocar
 
-    # Try reading serial data from the global variable updated by the reader thread.
+    # Try reading serial data
     for _ in range(10):
         if last_serial_data is not None:
-            # Assuming that the sensor distance is in position 1.
+            # Assuming sensor distance is at position 1.
             distanca_do_sensor = last_serial_data[1]
-            #print(f"Dist = {distanca_do_sensor}")
             interface["speed"].set_duty_cycle(PWM_REVERSE)
-            if distanca_do_sensor < distancia_maxima_re and (not distanca_do_sensor == 20.0 and not distanca_do_sensor == 0.0):                
+            if distanca_do_sensor < distancia_maxima_re and (distanca_do_sensor not in (20.0, 0.0)):                
                 break
         time.sleep(0.1)
 
     interface["speed"].set_duty_cycle(7.5)
-    #for _ in range(10):
-    #    if distanca_do_sensor > distancia_maxima_re:
-    #        print(f"Dando ré porque: dist = {distanca_do_sensor}")
-    #        interface["speed"].set_duty_cycle(PWM_REVERSE)
-    #        time.sleep(0.1)
-    #    else:
-    #        print(f"Nao vou dar ré dist = {distanca_do_sensor}")
-    #
-    #interface["speed"].set_duty_cycle(7.5)
-    
-    ## Signal the serial reader thread to stop and wait for it to finish.
-    #stop_serial_reader.set()
-    #reader_thread.join()
-    ##interface["lidar"].start()
 
 def serial_reader_task(interface):
     """
     Continuously reads from the serial port and updates the global last_serial_data variable.
     """
-    global last_serial_data
+    global last_serial_data, stop_serial_task
     while not stop_serial_task.is_set():
         data = interface["serial"].read(depth=5)
         if data:
             last_serial_data = data
-            #print(last_serial_data)
-        # Adjust the sleep interval based on your application's needs.
         time.sleep(0.05)
     
-    print("OUT OF LOOP")
-    print("OUT OF LOOP")
-    print("OUT OF LOOP")
-    print("OUT OF LOOP")
-    print("OUT OF LOOP")
-    print("OUT OF LOOP")
-    print("OUT OF LOOP")
+    console.info("Serial reader task exiting...")
+    interface["serial"].close()
 
-def init(): 
+def init():
+    global interface, lidarGlobal, stop_serial_task, serial_thread
+
     console.info(f"Initializing Voiture '{NOM_VOITURE}'")
     
-    global interface, lidarGlobal
-
     lidarGlobal = LidarInterface()
 
     interface = {
@@ -229,52 +200,54 @@ def init():
     time.sleep(0.5)
 
     steer_dc, speed_dc = stop_command()
-
     interface["steer"].set_duty_cycle(steer_dc)
     interface["speed"].set_duty_cycle(speed_dc)
 
+    # Prime the serial communication
     interface["serial"].read(depth=5)
-
     if interface["serial"].is_available():
         console.info("Serial comm is stable and working")
     else:
-        console.info("Serial comm is not responding, so closing it")
+        console.info("Serial comm is not responding, closing it")
+    
+    console.info("Press ENTER to start measurements and logs")
 
-    console.info("Press ENTER to start the code")
-
+    # Start a fresh keyboard listener if needed
     try:
-        listener.start()
+        keyboard.Listener(on_press=lambda key: None).start()
     except RuntimeError:
         pass
     
-    # Start the serial reader thread.
+    # IMPORTANT: Reinitialize the stop event and serial thread on each init.
+    stop_serial_task = threading.Event()
     serial_thread = threading.Thread(target=serial_reader_task, args=(interface,), daemon=True)
     serial_thread.start()
 
 def close():
-    global interface
+    global interface, lidarGlobal, stop_serial_task, serial_thread
 
     console.info("Closing the interface elements")
 
     steer_dc, speed_dc = stop_command()
-
     interface["steer"].set_duty_cycle(steer_dc)
     interface["speed"].set_duty_cycle(speed_dc)
 
     interface["steer"].stop()
     interface["speed"].stop()
-    interface["serial"].close()
-    
+
+    # Signal the serial reader thread to stop and wait for it.
+    if stop_serial_task is not None:
+        stop_serial_task.set()
+    if serial_thread is not None:
+        serial_thread.join()
+
     lidarGlobal.shutdown()
-    
-    # Signal the serial reader thread to stop.
-    stop_serial_task.set()
+        
 
-    console.close()
+RUN_VOITURE = True 
 
-def main(bypass: bool = False):
-    global interface, running
-
+def run_main(bypass: bool = False):
+    global interface, running, last_serial_data
     if bypass:
         running = True
 
@@ -282,7 +255,6 @@ def main(bypass: bool = False):
 
     controller = KeyboardController(console, interface)
     controller.start()
-
     try:
         for distances in lidarGlobal.iter_processed_scans():
             if not running:
@@ -290,20 +262,47 @@ def main(bypass: bool = False):
 
             if np.count_nonzero(distances) < 60:
                 continue
-
-            data = {"lidar": distances, "serial": last_serial_data}
-            console.log([*last_serial_data, -1, -1, distances.tolist()])
             
-            distances = 0.0 * distances
+            if RUN_VOITURE:
+                data = {"lidar": distances, "serial": last_serial_data}
+                steer, steer_dc = compute_steer(data)
+                speed, speed_dc = compute_speed(data, steer)
+
+                hitsx, hitsy = get_nonzero_points_in_hitbox(distances)
+                
+                console.info(f"hitbox: {np.count_nonzero(hitsx)} {last_serial_data} {steer:.2f} deg {100 * speed:.0f}%")
+                
+                if check_reverse(distances):
+                    console.info("Reverse")
+                    reverse(interface)
+                else:
+                    interface["steer"].set_duty_cycle(steer_dc)
+                    interface["speed"].set_duty_cycle(speed_dc)
+
+            console.log([*last_serial_data, steer, speed, distances.tolist()])
+            distances = np.zeros_like(distances)
 
     except (KeyboardInterrupt, Exception) as error:
-        if not isinstance(error, KeyboardInterrupt):
+        if not isinstance(error, KeyboardInterrupt, RPLidarException):
             traceback.print_exc()
-        
+
         if isinstance(error, RPLidarException):
-            main(bypass=True)
-    finally:
-        close()
+            run_main(True)
+
+
+def main():
+    while True:
+        try:
+            run_main(running)
+            break
+        except RPLidarException:
+            lidarGlobal.lidar.clean_input()
+            console.info("Lidar exception occurred. Restarting the main loop...")
+            #time.sleep(1)
+        except KeyboardInterrupt:
+            console.info("KeyboardInterrupt received. Exiting.")
+            console.close()
+            break
 
 if __name__ == "__main__":
     main()

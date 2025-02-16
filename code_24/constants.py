@@ -3,6 +3,7 @@ from console import Console
 import numpy as np
 
 cfg = load_config()
+
 NOM_VOITURE = get_config_value(cfg, "NOM_VOITURE", "Voiture-Couleur")
 
 #===================================================#
@@ -12,8 +13,8 @@ NOM_VOITURE = get_config_value(cfg, "NOM_VOITURE", "Voiture-Couleur")
 #===================================================#
 
 LIDAR_BAUDRATE   = int(get_config_value(cfg, "LIDAR_BAUDRATE", 115200))
-LIDAR_HEADING    = int(get_config_value(cfg, "LIDAR_HEADING_DEG",  90))
-FIELD_OF_VIEW    = int(get_config_value(cfg, "FIELD_OF_VIEW_DEG", 120))
+LIDAR_HEADING_OFFSET_DEG    = int(get_config_value(cfg, "LIDAR_HEADING_OFFSET_DEG", 90))
+FIELD_OF_VIEW_DEG    = int(get_config_value(cfg, "FIELD_OF_VIEW_DEG", 120))
 CONVOLUTION_SIZE = int(get_config_value(cfg, "CONVOLUTION_SIZE",   31))
 
 #===================================================#
@@ -93,7 +94,6 @@ SPEED_FACTOR_ANG = np.array(
      [50.0, 0.900]]
 )
 
-
 AGGRESSIVENESS = float(get_config_value(cfg, "AGGRESSIVENESS", 0.7))   # float: number between 0.0 and 1.0
 
 #===================================================#
@@ -102,7 +102,9 @@ AGGRESSIVENESS = float(get_config_value(cfg, "AGGRESSIVENESS", 0.7))   # float: 
 #                                                   #
 #===================================================#
 
-WIDTH =      float(get_config_value(cfg, "WIDTH", 0.20))
+HITBOX_WIDTH =  float(get_config_value(cfg, "HITBOX_WIDTH", 0.20))
+HITBOX_HEIGHT = float(get_config_value(cfg, "HITBOX_HEIGHT", 0.20))
+
 MIN_LENGTH = float(get_config_value(cfg, "MIN_LENGTH", 0.28))
 MAX_LENGTH = float(get_config_value(cfg, "MAX_LENGTH", 0.38))
 
