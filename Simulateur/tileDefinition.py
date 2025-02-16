@@ -4,40 +4,40 @@ from sympy import symbols, sympify
 class TileDefinition:
     def __init__(self, name, equations, domains, sockets):
         """
-        name: str - Nom de la tuile (par exemple, 'straight', 'curved').
-        equations: dict - Équations définissant la géométrie de la piste.
-        domains: dict - Intervalles de domaine des équations.
-        sockets: dict - Définition des connectivités basées sur les orientations.
+        name: str - Name of the tile (e.g., 'straight', 'curved').
+        equations: dict - Equations defining the track geometry.
+        domains: dict - Domain intervals of the equations.
+        sockets: dict - Connectivity definitions based on orientations.
         """
         self.name = name
-        self.equations = equations  # Équations brutes sous forme de chaînes
-        self.domains = domains      # Domaines des équations
-        self.sockets = sockets      # Règles de connectivité
-        self.parsed_equations = self.parse_equations(equations)  # Équations analysées
+        self.equations = equations  # Raw equations as strings
+        self.domains = domains      # Domains of the equations
+        self.sockets = sockets      # Connectivity rules
+        self.parsed_equations = self.parse_equations(equations)  # Parsed equations
 
     def parse_equations(self, equations):
         """
-        Convertit les équations définies en chaînes en fonctions utilisables.
+        Converts equations defined as strings into usable functions.
         """
         parsed = {}
         x = symbols('x')
         for key, eq in equations.items():
-            parsed[key] = sympify(eq)  # Convertit en expression symbolique
+            parsed[key] = sympify(eq)  # Convert to symbolic expression
         return parsed
 
     @classmethod
     def from_config(cls, config, global_params):
         """
-        Crée une TileDefinition à partir d'une configuration (une seule tuile dans le fichier JSON).
+        Creates a TileDefinition from a configuration (a single tile from the JSON file).
         """
-        # Remplace les paramètres globaux dans les équations
+        # Replace global parameters in equations
         equations = {
             key: eq.replace("tile_size", str(global_params['tile_size']))
                    .replace("track_width", str(global_params['track_width']))
             for key, eq in config['equations'].items()
         }
 
-        # Remplace les paramètres globaux dans les domaines
+        # Replace global parameters in domains
         domains = {
             key: [
                 float(sympify(limit.replace("tile_size", str(global_params['tile_size']))
@@ -51,25 +51,25 @@ class TileDefinition:
 
     def evaluate(self, orientation, global_params):
         """
-        Génère les points (tableaux numpy) de la géométrie de la piste à partir des équations.
+        Generates points (numpy arrays) representing the track geometry based on the equations.
         """
         T = global_params.get('tile_size')
         points = {}
 
         for side, eq in self.parsed_equations.items():
-            # Obtenir le domaine de l'équation
+            # Get the equation domain
             domain = self.domains.get(side, [0, T])
             domain_size = domain[1] - domain[0]
 
-            # Ajuster la résolution proportionnellement à la taille du domaine
-            local_resolution = int(global_params["tile_resolution"]* (domain_size / T))
+            # Adjust resolution proportionally to the domain size
+            local_resolution = int(global_params["tile_resolution"] * (domain_size / T))
 
-            # Générer les valeurs de x dans le domaine
+            # Generate x values within the domain
             x_vals = np.linspace(domain[0], domain[1], local_resolution)
-            y_vals = [float(eq.evalf(subs={'x': x})) for x in x_vals]  # Évaluer l'équation
+            y_vals = [float(eq.evalf(subs={'x': x})) for x in x_vals]  # Evaluate the equation
             points[side] = np.column_stack((x_vals, y_vals))
 
-        # Tourner les points selon l'orientation
+        # Rotate the points according to the orientation
         if orientation:
             points = self.rotate_points(points, orientation, tile_size=T)
 
@@ -77,9 +77,9 @@ class TileDefinition:
 
     def rotate_points(self, points, orientation, tile_size):
         """
-        Tourne les points de la tuile pour l'orientation spécifiée autour du centre de la tuile.
-        orientation: int - Orientation de la tuile (0: pas de rotation, 1: 90°, etc.).
-        tile_size: float - Taille de la tuile (utilisée pour déterminer le centre de rotation).
+        Rotates the tile points to the specified orientation around the tile center.
+        orientation: int - Tile orientation (0: no rotation, 1: 90°, etc.).
+        tile_size: float - Tile size (used to determine the rotation center).
         """
         angle = np.pi / 2 * orientation
         rotation_matrix = np.array([
@@ -87,50 +87,49 @@ class TileDefinition:
             [-np.sin(angle), np.cos(angle)]
         ])
 
-        # Centre de la tuile
+        # Tile center
         center = np.array([tile_size / 2, tile_size / 2])
 
         rotated_points = {}
         for side, pts in points.items():
-            # Translater les points vers le centre
+            # Translate points to the center
             translated_pts = pts - center
-            # Appliquer la rotation
+            # Apply rotation
             rotated_pts = np.dot(translated_pts, rotation_matrix.T)
-            # Translater à nouveau pour revenir à la position originale
+            # Translate back to the original position
             rotated_points[side] = rotated_pts + center
 
         return rotated_points
 
     def generate_bitmap(tile, global_params, grid_size=100, orientation=0):
         """
-        Génère un bitmap pour une seule tuile.
+        Generates a bitmap for a single tile.
 
-        tile: TileDefinition - Instance de la tuile.
-        global_params: dict - Paramètres globaux, y compris tile_size.
-        resolution: int - Résolution pour chaque tuile.
-        grid_size: int - Taille de la matrice du bitmap.
-        orientation: int - Orientation de la tuile (0, 1, 2, 3).
+        tile: TileDefinition - Tile instance.
+        global_params: dict - Global parameters, including tile_size.
+        grid_size: int - Bitmap matrix size.
+        orientation: int - Tile orientation (0, 1, 2, 3).
 
-        Retourne:
-        np.ndarray - Bitmap de la tuile.
+        Returns:
+        np.ndarray - Tile bitmap.
         """
         
         tile_size = global_params.get('tile_size', 1)
-        bitmap = np.zeros((grid_size, grid_size))  # Initialiser le bitmap vide
+        bitmap = np.zeros((grid_size, grid_size))  # Initialize empty bitmap
 
-        # Échelle pour mapper l'espace continu au grid discret
+        # Scale to map the continuous space to the discrete grid
         scale = grid_size / tile_size
 
-        # Générer les points pour l'orientation spécifiée
+        # Generate points for the specified orientation
         points = tile.evaluate(orientation=orientation, global_params=global_params)
 
-        # Mapper les points sur le bitmap
+        # Map points to the bitmap
         for side, pts in points.items():
             for x, y in pts:
-                # Convertir les coordonnées continues en indices dans le bitmap
-                i = int(y * scale)  # Indice de la ligne
-                j = int(x * scale)  # Indice de la colonne
+                # Convert continuous coordinates to bitmap indices
+                i = int(y * scale)  # Row index
+                j = int(x * scale)  # Column index
                 if 0 <= i < grid_size and 0 <= j < grid_size:
-                    bitmap[i, j] = 1  # Marque le pixel comme faisant partie de la piste
+                    bitmap[i, j] = 1  # Mark pixel as part of the track
 
         return bitmap

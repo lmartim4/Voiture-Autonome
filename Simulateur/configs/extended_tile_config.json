@@ -1,6 +1,6 @@
 {
+    "debug": false,
     "global_params": {
-        "debug": false,
         "n_rows" : 15,
         "n_cols" : 15,
         "tile_size": 1,

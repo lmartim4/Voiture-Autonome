@@ -1,74 +1,69 @@
 class WaveFunctionCollapse:
     def __init__(self, grid, tile_definitions):
         """
-        Initialise le WFC sur une grille donnée avec des définitions de tuiles.
+        Initializes WFC on a given grid with tile definitions.
 
-        grid: Grid - Instance de la classe Grid contenant les tuiles et les possibilités.
-        tile_definitions: list - Liste des TileDefinition définissant les règles.
+        grid: Grid - Instance of the Grid class containing tiles and possibilities.
+        tile_definitions: list - List of TileDefinition defining the rules.
         """
         self.grid = grid
         self.tile_definitions = tile_definitions
 
     def is_valid_socket_match(self, socket_a, socket_b):
         """
-        Vérifie si deux sockets sont compatibles.
+        Checks if two sockets are compatible.
 
-        socket_a: str ou None - Socket de la première tuile.
-        socket_b: str ou None - Socket de la deuxième tuile.
+        socket_a: str or None - Socket of the first tile.
+        socket_b: str or None - Socket of the second tile.
 
-        Retourne:
-        bool - True si les sockets sont compatibles, sinon False.
+        Returns:
+        bool - True if the sockets are compatible, otherwise False.
         """
         return socket_a == socket_b
 
     def apply_boundary_conditions(self):
         """
-        Applique les conditions de contournement pour les bords de la grille.
-        Toutes les sockets qui pointent vers l'extérieur doivent être nulles.
+        Applies boundary conditions to the edges of the grid.
+        All sockets pointing outward must be null.
         """
         for row in range(self.grid.rows):
             for col in range(self.grid.cols):
                 tile = self.grid.grid[row][col]
-                if row == 0:  # Bord superieur 
+                if row == 0:  # Top border
                     tile.possibilities = [
                         p for p in tile.possibilities if p["rotated_sockets"]["top"] is None
                     ]
-                if row == self.grid.rows - 1:  # Bord inferieur 
+                if row == self.grid.rows - 1:  # Bottom border
                     tile.possibilities = [
                         p for p in tile.possibilities if p["rotated_sockets"]["bottom"] is None
                     ]
-                if col == 0:  # Bord gauche
+                if col == 0:  # Left border
                     tile.possibilities = [
                         p for p in tile.possibilities if p["rotated_sockets"]["left"] is None
                     ]
-                if col == self.grid.cols - 1:  # Bord droit
+                if col == self.grid.cols - 1:  # Right border
                     tile.possibilities = [
                         p for p in tile.possibilities if p["rotated_sockets"]["right"] is None
                     ]
 
-
-                self.propagate_constraints(row, col)        
-                # print(f"Para a tile {row},{col} temos as possibilidades :\n")
-                # for possibility in tile.possibilities:
-                #     print(possibility["tile_definition"].name, possibility["orientation"] * 90)
-
+                self.propagate_constraints(row, col)
 
     def propagate_constraints(self, row, col):
         """
-        Propage les contraintes de connectivité à partir d'une cellule donnée.
+        Propagates connectivity constraints from a given cell.
 
-        row: int - Ligne de la cellule actuelle.
-        col: int - Colonne de la cellule actuelle.
+        row: int - Row index of the current cell.
+        col: int - Column index of the current cell.
         """
-        
-        # Order : 
-        # neighbour's row, col
-        # Neighbour socket, your (matching) socket
+
+        # Order:
+        # Neighbor's row, col
+        # Neighbor socket, corresponding socket
         neighbors = [
-            (row + 1, col, "bottom", "top"),  # Cellule en-dessous
-            (row - 1, col, "top", "bottom"),  # Cellule au-dessus
-            (row, col - 1, "left", "right"),  # Cellule à gauche
-            (row, col + 1, "right", "left"),  # Cellule à droite
+            (row + 1, col, "bottom", "top"),  # Cell below
+            (row - 1, col, "top", "bottom"),  # Cell above
+            (row, col - 1, "left", "right"),  # Cell to the left
+            (row, col + 1, "right", "left"),  # Cell to the right
         ]
 
         for neighbor_row, neighbor_col, our_socket, their_socket in neighbors:
@@ -76,7 +71,7 @@ class WaveFunctionCollapse:
                 current_tile = self.grid.grid[row][col]
                 neighbor_tile = self.grid.grid[neighbor_row][neighbor_col]
 
-                # Collecte toutes les possibilités compatibles avec le voisin
+                # Collect all possibilities that are compatible with the neighbor
                 valid_possibilities = []
                 for possibility in neighbor_tile.possibilities:
                     if any(
@@ -87,21 +82,21 @@ class WaveFunctionCollapse:
                     ):
                         valid_possibilities.append(possibility)
 
-                neighbor_tile.possibilities = valid_possibilities 
+                neighbor_tile.possibilities = valid_possibilities
 
     def collapse(self, step_callback=None):
         """
-        Executa o WFC para resolver a grade inteira.
+        Executes the WFC algorithm to resolve the entire grid.
 
-        step_callback: function - Callback opcional para cada passo, recebendo
-        (passo, linha, coluna, grid) como argumentos.
+        step_callback: function - Optional callback for each step, receiving
+        (step, row, col, grid) as arguments.
         """
         self.apply_boundary_conditions()
 
         step = 0
 
         while True:
-            # Encontrar a célula não colapsada com o menor número de possibilidades
+            # Find the non-collapsed cell with the fewest possibilities
             min_possibilities = float("inf")
             next_cell = None
 
@@ -112,27 +107,26 @@ class WaveFunctionCollapse:
                         min_possibilities = len(tile.possibilities)
                         next_cell = (row, col)
 
-            # Se nenhuma célula a colapsar for encontrada, o processo está concluído
+            # If no cell is found to collapse, the process is complete
             if next_cell is None:
                 break
 
-            # Colapsar a célula com o menor número de possibilidades
+            # Collapse the cell with the fewest possibilities
             row, col = next_cell
-            # print("Originalmente estavamos em ", self.grid.grid[row][col].possibilities, " em (", col, ", ", row, ") ---------------- \n" )
             self.grid.grid[row][col].collapse()
 
-            # Callback para debug
+            # Debug callback
             if step_callback:
                 step_callback(step, row, col, self.grid)
 
-            # Propagar as restrições a partir dessa célula
+            # Propagate constraints from this cell
             self.propagate_constraints(row, col)
             step += 1
 
-        # Verificação final: todas as células devem estar colapsadas
+        # Final check: all cells should be collapsed
         for row in range(self.grid.rows):
             for col in range(self.grid.cols):
                 if self.grid.grid[row][col].collapsed is None:
-                    raise RuntimeError("Impossível resolver a grade. Algumas células permanecem incertas.")
+                    raise RuntimeError("Unable to resolve the grid. Some cells remain uncertain.")
 
-        print("Grille résolue avec succès !")
+        print("Grid successfully resolved!")
