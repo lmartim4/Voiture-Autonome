@@ -1,8 +1,8 @@
 {
     "debug": false,
     "global_params": {
-        "n_rows" : 5,
-        "n_cols" : 5,
+        "n_rows" : 10,
+        "n_cols" : 10,
         "tile_size": 1,
         "track_width": 0.5,
         "tile_resolution": 500,

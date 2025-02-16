@@ -41,6 +41,7 @@ def test_wave_function_collapse():
 
     # Generate and plot the final track bitmap
     grid.plot_bitmap()
+    # grid.plot_debug_grid()
 
 if __name__ == "__main__":
     test_wave_function_collapse()

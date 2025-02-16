@@ -151,12 +151,78 @@ class Grid:
 
         return dilated_image
 
+    def keep_largest_track(self,bitmap):
+        """
+        Keeps only the two largest connected components (track) in the given binary bitmap.
+
+        Parameters:
+        - bitmap: np.ndarray (Binary matrix where track pixels are 1 and background is 0)
+
+        Returns:
+        - np.ndarray (Filtered bitmap with only the largest track)
+        """
+
+        # Ensure it's binary (in case of grayscale values)
+        binary_bitmap = (bitmap > 0).astype(np.uint8)
+
+        # Find connected components
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(binary_bitmap, connectivity=8)
+
+        if num_labels <= 2:
+            return bitmap   # No need to filter if there are already at most 2 components
+
+        # Get sizes of each component (excluding the background at index 0)
+        component_sizes = stats[1:, cv2.CC_STAT_AREA]  # Ignore background
+
+        # Get indices of the two largest components
+        largest_indices = np.argsort(component_sizes)[-2:] + 1  # Add 1 to ignore background label
+
+        # Create a mask for only the two largest components
+        filtered_bitmap = np.isin(labels, largest_indices).astype(np.uint8) * 255
+ 
+
+        return filtered_bitmap # Return a binary image again
+
+    def crop_to_content(self,bitmap):
+        """
+        Automatically crops the image to the smallest bounding box containing the track.
+
+        Parameters:
+        - bitmap: np.ndarray (Binary matrix where track pixels are 1 and background is 0)
+
+        Returns:
+        - np.ndarray (Cropped bitmap)
+        """
+        # Find non-zero pixels (track area)
+        coords = cv2.findNonZero(bitmap)
+
+        if coords is None:
+            return bitmap  # No need to crop if no track is found
+
+        # Get bounding box
+        x, y, w, h = cv2.boundingRect(coords)
+
+        # Crop the image to this bounding box
+        cropped_bitmap = bitmap[y:y+h, x:x+w]
+
+        return cropped_bitmap
+    
+    
     def plot_bitmap(self, block=True):
         """
         Displays the generated bitmap of the track.
         """
         bitmap = self.generate_bitmap()
+
+        # Fix the holes, thicken the walls
         bitmap = self.dilate_track(bitmap)
+        
+        # Keep only the largest track 
+        bitmap = self.keep_largest_track(bitmap)
+
+        # Crop the image to fit the track tightly
+        bitmap = self.crop_to_content(bitmap)
+
         plt.imshow(bitmap, cmap='Greys', origin='lower')
         plt.title("Track Bitmap")
         plt.xlabel("X")
