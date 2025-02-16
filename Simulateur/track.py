@@ -1,3 +1,4 @@
+from collections import deque
 import numpy as np
 import cv2
 
@@ -22,6 +23,7 @@ class Grid:
         self.cols = global_params["n_cols"]
         self.tile_resolution = global_params["tile_resolution"]
         self.global_params = global_params
+        self.tile_definitions = tile_definitions
         self.grid = [[Tile(tile_definitions) for _ in range(self.cols)] for _ in range(self.rows)]
 
     def simulate_collapse(self):
@@ -84,7 +86,7 @@ class Grid:
         plt.title("Current Grid State")
         plt.show()
 
-    def generate_bitmap(self):
+    def draw_bitmap(self):
         """
         Generates the complete bitmap of the track based on the current grid.
 
@@ -123,6 +125,7 @@ class Grid:
                         if local_bitmap[i, j] > 0:
                             bitmap[offset_y + i, offset_x + j] = 1
 
+        self.bitmap = bitmap
         return bitmap
     
     def dilate_track(self, bitmap):
@@ -151,38 +154,6 @@ class Grid:
 
         return dilated_image
 
-    def keep_largest_track(self,bitmap):
-        """
-        Keeps only the two largest connected components (track) in the given binary bitmap.
-
-        Parameters:
-        - bitmap: np.ndarray (Binary matrix where track pixels are 1 and background is 0)
-
-        Returns:
-        - np.ndarray (Filtered bitmap with only the largest track)
-        """
-
-        # Ensure it's binary (in case of grayscale values)
-        binary_bitmap = (bitmap > 0).astype(np.uint8)
-
-        # Find connected components
-        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(binary_bitmap, connectivity=8)
-
-        if num_labels <= 2:
-            return bitmap   # No need to filter if there are already at most 2 components
-
-        # Get sizes of each component (excluding the background at index 0)
-        component_sizes = stats[1:, cv2.CC_STAT_AREA]  # Ignore background
-
-        # Get indices of the two largest components
-        largest_indices = np.argsort(component_sizes)[-2:] + 1  # Add 1 to ignore background label
-
-        # Create a mask for only the two largest components
-        filtered_bitmap = np.isin(labels, largest_indices).astype(np.uint8) * 255
- 
-
-        return filtered_bitmap # Return a binary image again
-
     def crop_to_content(self,bitmap):
         """
         Automatically crops the image to the smallest bounding box containing the track.
@@ -207,25 +178,118 @@ class Grid:
 
         return cropped_bitmap
     
+    def get_connected_components(self):
+        """
+        Identifies all connected components in the grid using BFS.
+
+        Returns:
+        - List of sets, where each set contains (row, col) tuples representing a component.
+        """
+        rows, cols = self.rows, self.cols
+        visited = set()
+        components = []
+
+        def bfs(start):
+            """Performs BFS from a given start tile to find all connected tiles."""
+            queue = deque([start])
+            component = set([start])
+            visited.add(start)
+
+            while queue:
+                r, c = queue.popleft()
+                tile = self.grid[r][c]
+
+                if not tile or not tile.collapsed:
+                    continue
+
+                neighbors = [
+                    (r-1, c, "top", "bottom"),
+                    (r+1, c, "bottom", "top"),
+                    (r, c-1, "left", "right"),
+                    (r, c+1, "right", "left"),
+                ]
+
+                for nr, nc, socket1, socket2 in neighbors:
+                    if 0 <= nr < rows and 0 <= nc < cols:
+                        neighbor = self.grid[nr][nc]
+
+                        if neighbor and neighbor.collapsed and (nr, nc) not in visited:
+                            current_socket = tile.collapsed["rotated_sockets"][socket1]
+                            if current_socket == neighbor.collapsed["rotated_sockets"][socket2] and current_socket is not None:
+                                visited.add((nr, nc))
+                                queue.append((nr, nc))
+                                component.add((nr, nc))
+
+            return component
+
+        # Find all connected components
+        for r in range(rows):
+            for c in range(cols):
+                if (r, c) not in visited and self.grid[r][c] and self.grid[r][c].collapsed:
+                    component = bfs((r, c))
+                    components.append(component)
+
+        # Sort components by size (largest first)
+        components.sort(key=len, reverse=True)
+
+        return components
+
+    def keep_largest_connected_component(self,debug = False):
+        """
+        Keeps only the largest connected track, setting all other tiles to 'empty'.
+        Also prints debugging information about the components found.
+        """
+        components = self.get_connected_components()
+
+        if debug:
+            # Print all components and their sizes for debugging
+            print("\nConnected Components (sorted by size):")
+            for i, component in enumerate(components):
+                print(f"Component {i+1}: {len(component)} tiles")
+
+        if not components:
+            print("No connected components found!")
+            return
+
+        largest_component = components[0]  # Keep only the largest
+
+        # Get the "empty" tile definition
+        empty_tile = next(tile for tile in self.tile_definitions if tile.name == "empty")
+
+        # Convert all tiles **outside** the largest component to "empty"
+        for r in range(self.rows):
+            for c in range(self.cols):
+                if (r, c) not in largest_component:
+                    self.grid[r][c].collapsed = {
+                        "tile_definition": empty_tile,
+                        "orientation": 0,
+                        "rotated_sockets": empty_tile.sockets
+                    }
+
+        # print("\nFiltered to keep only the largest component.")
     
-    def plot_bitmap(self, block=True):
+    def generate_bitmap(self,debug=False):
         """
-        Displays the generated bitmap of the track.
-        """
-        bitmap = self.generate_bitmap()
+        Generates the bit map
+        """ 
+        self.keep_largest_connected_component(debug=debug)
+        bitmap = self.draw_bitmap()
 
         # Fix the holes, thicken the walls
         bitmap = self.dilate_track(bitmap)
         
-        # Keep only the largest track 
-        bitmap = self.keep_largest_track(bitmap)
-
         # Crop the image to fit the track tightly
         bitmap = self.crop_to_content(bitmap)
 
-        plt.imshow(bitmap, cmap='Greys', origin='lower')
+        self.bitmap = bitmap
+    
+    def plot_bitmap(self, debug=False):
+        """
+        Displays the generated bitmap of the track.
+        """
+        plt.imshow(self.bitmap, cmap='Greys', origin='lower')
         plt.title("Track Bitmap")
         plt.xlabel("X")
         plt.ylabel("Y")
-        plt.show(block=block)
+        plt.show(block=not debug)
 

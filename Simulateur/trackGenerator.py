@@ -84,7 +84,15 @@ class WaveFunctionCollapse:
 
                 neighbor_tile.possibilities = valid_possibilities
 
-    def collapse(self, step_callback=None):
+    def step_callback(self, step, row, col):
+        print("="*100,"\n")
+        print(f"Now, at step {step}, we collapsed cell ({col}, {row}) to ", self.grid.grid[row][col].possibilities[0]["tile_definition"].name, " at ", self.grid.grid[row][col].possibilities[0]["orientation"] * 90," degrees\n")
+        print("="*100)
+        self.grid.plot_debug_grid()
+        self.grid.draw_bitmap()
+        self.grid.plot_bitmap(debug=True)  # Show the state after each step
+
+    def collapse(self, debug=False):
         """
         Executes the WFC algorithm to resolve the entire grid.
 
@@ -116,8 +124,8 @@ class WaveFunctionCollapse:
             self.grid.grid[row][col].collapse()
 
             # Debug callback
-            if step_callback:
-                step_callback(step, row, col, self.grid)
+            if debug:
+                self.step_callback(step, row, col)
 
             # Propagate constraints from this cell
             self.propagate_constraints(row, col)
