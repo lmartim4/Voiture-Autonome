@@ -2,14 +2,14 @@ import random
 
 class Tile:
     """
-    Représente une instance de tuile avec des possibilités de colapso et une configuration actuelle.
+    Represents a tile instance with collapse possibilities and a current configuration.
     """
 
     def __init__(self, tile_definitions):
         """
-        Initialise la tuile avec toutes les combinaisons possibles.
+        Initializes the tile with all possible combinations.
 
-        tile_definitions: list - Liste des TileDefinition.
+        tile_definitions: list - List of TileDefinition.
         """
         self.possibilities = [
             {"tile_definition": tile_def, "orientation": orientation,
@@ -18,10 +18,10 @@ class Tile:
             for orientation in range(4)
         ]
 
-        # Eliminer les redondances en "empty"
+        # Remove redundant "empty" tile rotations
         self.possibilities = [p for p in self.possibilities if not (p["tile_definition"].name == "empty" and p["orientation"] > 0)]
         
-        # Eliminer les redondances en "straight"
+        # Remove redundant "straight" tile rotations
         self.possibilities = [p for p in self.possibilities if not (p["tile_definition"].name == "straight" and p["orientation"] in [2,3])]
 
         # for possibility in self.possibilities:
@@ -29,32 +29,32 @@ class Tile:
         
         # print("="*50)
         
-
         # print(self.possibilities)
-        self.collapsed = None  # Aucune tuile sélectionnée au départ
+        self.collapsed = None  # No tile selected initially
 
-    def rotate_sockets(self,sockets, orientation):
+    def rotate_sockets(self, sockets, orientation):
         """
-        Tourne les sockets en fonction de l'orientation.
+        Rotates the sockets based on the orientation.
 
-        sockets: dict - Sockets originaux de la tuile (par exemple, {"top": "mid", "bottom": None, ...}).
-        orientation: int - Orientation (0: aucune rotation, 1: 90°, 2: 180°, 3: 270°).
+        sockets: dict - Original sockets of the tile (e.g., {"top": "mid", "bottom": None, ...}).
+        orientation: int - Orientation (0: no rotation, 1: 90°, 2: 180°, 3: 270°).
 
-        Retourne:
-        dict - Sockets tournés.
+        Returns:
+        dict - Rotated sockets.
         """
-        ordre_sockets = ["top", "right", "bottom", "left"]
-        sockets_tournes = {}
-        for i, cote in enumerate(ordre_sockets):
-            nouvel_index = (i + orientation) % 4
-            sockets_tournes[ordre_sockets[nouvel_index]] = sockets.get(cote)
-        return sockets_tournes
+        socket_order = ["top", "right", "bottom", "left"]
+        rotated_sockets = {}
+        for i, side in enumerate(socket_order):
+            new_index = (i + orientation) % 4
+            rotated_sockets[socket_order[new_index]] = sockets.get(side)
+        return rotated_sockets
 
     def collapse(self):
         """
-        Simule le colapso en choisissant une possibilité aléatoire.
+        Simulates the collapse process by selecting a random possibility.
         """
         if self.possibilities:
             self.collapsed = random.choice(self.possibilities)
-            # Réduit les possibilités à la sélectionnée
+            # Reduce possibilities to the selected one
             self.possibilities = [self.collapsed]
+
