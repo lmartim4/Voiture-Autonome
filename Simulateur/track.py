@@ -281,12 +281,14 @@ class Grid:
         # Crop the image to fit the track tightly
         bitmap = self.crop_to_content(bitmap)
 
+        # Draw the start line 
+
         self.bitmap = bitmap
     
     # Define button click behavior
     def on_key(self, event):
         if event.key == 'a':  # Save the track
-            plt.imsave(f"track{self.track_number}.png", self.bitmap, cmap='Greys')
+            plt.imsave(f"tracks/track{self.track_number}.png", self.bitmap, cmap='Greys')
             print(f"Track saved as 'track{self.track_number}.png'")
             self.track_number += 1 
             plt.close(self.fig)
