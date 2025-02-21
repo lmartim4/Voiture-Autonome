@@ -1,9 +1,11 @@
 import pygame
+import numpy as np
 
 class Environment:
     
     black = (0, 0, 0)
     white = (255, 255, 255)
+    red = (255, 0, 0)
 
     def __init__(self, map_name, max_size=800, padding_percent=0.05):
         """
@@ -15,17 +17,20 @@ class Environment:
         """
         pygame.init()
 
+        # Point cloud data to be draw
+        self.pointCloud = []
+
         # Load external map
         self.external_map = pygame.image.load(f'tracks/{map_name}')
 
         # Get original dimensions
-        orig_width, orig_height = self.external_map.get_width(), self.external_map.get_height()
+        self.map_width, self.map_height = self.external_map.get_width(), self.external_map.get_height()
 
         # Compute the scale factor while keeping aspect ratio
-        scale_factor = min(max_size / orig_width, max_size / orig_height)
+        scale_factor = min(max_size / self.map_width, max_size / self.map_height)
 
         # Compute new dimensions after scaling
-        new_width, new_height = int(orig_width * scale_factor), int(orig_height * scale_factor)
+        new_width, new_height = int(self.map_width * scale_factor), int(self.map_height * scale_factor)
 
         # Compute padding based on max_size and the given percentage
         padding = int(max_size * padding_percent)
@@ -49,13 +54,49 @@ class Environment:
         self.external_map = pygame.transform.scale(self.external_map, (new_width, new_height))
         self.map.blit(self.external_map, (x_offset, y_offset))
 
+    def polar2cartesian(self, distance, angle, position):
+        x = int(distance * np.cos(angle) + position[0])
+        y = int(-distance * np.sin(angle) + position[1])
+        return (x,y)
+    
+    def data_storage(self,data):
+        # print(len(self.pointCloud))
+        for data_dist, data_ang, data_pos in data:
+            point = self.polar2cartesian(data_dist, data_ang, data_pos)
+            if point not in self.pointCloud : 
+                self.pointCloud.append(point)
+    
+    def show_sensor_data(self):
+        self.infomap = self.map.copy()
+
+        for point in self.pointCloud:
+            self.infomap.set_at((int(point[0]), int(point[1])),self.red)
+
     def run(self):
         """Main loop to keep the window open."""
         running = True
         while running:
+            sensorON = False
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+                if pygame.mouse.get_focused():
+                    sensorON = True
+                
+                # Precisa ?????????
+                elif not pygame.mouse.get_focused():
+                    sensorON = False
+            
+            if sensorON: 
+                position = pygame.mouse.get_pos()
+                self.lidar.position = position
+                sensor_data = self.lidar.sense_obstacles()
+                self.data_storage(sensor_data)
+                self.show_sensor_data()
+            
+            self.map.blit(self.infomap, (0,0))
             pygame.display.update()
+
 
         pygame.quit()
