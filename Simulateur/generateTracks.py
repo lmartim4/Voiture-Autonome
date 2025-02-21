@@ -2,7 +2,7 @@ import json
 import matplotlib.pyplot as plt
 from tileDefinition import TileDefinition
 from track import Grid
-from trackGenerator import WaveFunctionCollapse
+from waveFunctionCollapse import WaveFunctionCollapse
 import numpy as np
 
 def generate_and_display_track():
