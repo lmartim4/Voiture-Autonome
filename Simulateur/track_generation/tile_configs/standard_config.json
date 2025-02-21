@@ -1,0 +1,93 @@
+{
+    "debug": false,
+    "global_params": {
+        "n_rows" : 5,
+        "n_cols" : 5,
+        "tile_size": 1,
+        "track_width": 0.5,
+        "tile_resolution": 1000,
+        "dilation_kernel_size": 12,
+        "dilation_iter" : 4
+    },
+    "tiles": [
+        {
+            "name": "straight",
+            "equations": {
+                "top": "(tile_size * (1 + track_width) / 2)",
+                "bottom": "(tile_size * (1 - track_width) / 2)"
+            },
+            "domains": {
+                "top": [
+                    "0",
+                    "tile_size"
+                ],
+                "bottom": [
+                    "0",
+                    "tile_size"
+                ]
+            },
+            "sockets": {
+                "top": null,
+                "bottom": null,
+                "left": "mid",
+                "right": "mid"
+            }
+        },
+        {
+            "name": "curved",
+            "equations": {
+                "top": "sqrt(((tile_size + track_width) / 2)**2 - (x - tile_size)**2)",
+                "bottom": "sqrt(((tile_size - track_width) / 2)**2 - (x - tile_size)**2)"
+            },
+            "domains": {
+                "top": [
+                    "(tile_size - track_width)/2",
+                    "tile_size"
+                ],
+                "bottom": [
+                    "(tile_size + track_width)/2",
+                    "tile_size"
+                ]
+            },
+            "sockets": {
+                "top": null,
+                "right": "mid",
+                "bottom": "mid",
+                "left": null
+            }
+        },
+        {
+            "name": "empty",
+            "equations": {
+                "top": "0",
+                "bottom": "0",
+                "left": "0",
+                "right": "0"
+            },
+            "domains": {
+                "top": [
+                    "0",
+                    "0"
+                ],
+                "bottom": [
+                    "0",
+                    "0"
+                ],
+                "left": [
+                    "0",
+                    "0"
+                ],
+                "right": [
+                    "0",
+                    "0"
+                ]
+            },
+            "sockets": {
+                "top": null,
+                "bottom": null,
+                "left": null,
+                "right": null
+            }
+        }
+    ]
+}

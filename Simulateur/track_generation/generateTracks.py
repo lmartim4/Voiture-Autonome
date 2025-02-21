@@ -10,7 +10,7 @@ def generate_and_display_track():
     Generates a track using WFC and displays it, allowing the user to save or generate a new one.
     """
     # Load the JSON configuration file
-    with open('../configs/tile_config.json', 'r') as file:
+    with open('tile_configs/standard_config.json', 'r') as file:
         data = json.load(file)
 
     # Extract global parameters and tiles
