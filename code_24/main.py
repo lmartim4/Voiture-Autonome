@@ -1,11 +1,11 @@
 import traceback
 import numpy as np
 from pynput import keyboard
-from console import Console
+from logger import Logger, SENSOR
 from core import *
 from control import *
 
-console = Console()
+console = Logger()
 
 running = False
 interface = None
@@ -154,8 +154,9 @@ def main(bypass: bool = False) -> None:
             else:
                 interface["steer"].set_duty_cycle(steer_dc)
                 interface["speed"].set_duty_cycle(speed_dc)
-
-            console.log([*serial, steer, speed, distances.tolist()])
+            
+            #console.log([*serial, steer, speed, distances.tolist()])
+            console.logSensor(SENSOR.LIDAR, distances.toList())
 
             distances = 0.0 * distances
 

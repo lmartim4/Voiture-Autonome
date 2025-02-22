@@ -313,7 +313,8 @@ if __name__ == "__main__":
     try:
         filename = sys.argv[1]
     except IndexError:
-        filename = "logs/18-30-17.csv"
+        print("Log file not specified")
+        exit()
 
     try:
         main(filename)

@@ -162,37 +162,7 @@ def compute_speed(data: Dict[str, Any], steer: float) -> Tuple[float, float]:
 
     return speed, duty_cycle
 
-def get_nonzero_points_in_hitbox(lidar):
-    """
-    Returns only the nonzero LiDAR points inside the defined hitbox.
-    
-    Args:
-        lidar (np.array): Array containing lidar distance readings (360 values).
-        
-    Returns:
-        Tuple[np.ndarray, np.ndarray]: Arrays of x and y coordinates inside the hitbox (nonzero only).
-    """
-
-    # Filter valid lidar points
-    mask = (0 < lidar) & (lidar < 360)
-    distances = lidar[mask]
-    angles = np.deg2rad(np.arange(0, 360)[mask])
-
-    # Convert polar to Cartesian coordinates
-    x = distances * np.cos(angles)
-    y = distances * np.sin(angles)
-
-    # Define hitbox conditions
-    mask_hitbox = (np.abs(y) <= HITBOX_WIDTH) & (np.abs(x) <= HITBOX_HEIGHT) & (y * x != 0)
-
-    return x[mask_hitbox], y[mask_hitbox]
-
-
 def check_reverse(distances) -> bool:
-    hitsx, hitsy = get_nonzero_points_in_hitbox(distances)
-    # Use np.count_nonzero to count the nonzero elements.
-    if np.count_nonzero(hitsx) > MIN_POINTS_TO_TRIGGER:
-        return True
     return False
 
 def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:

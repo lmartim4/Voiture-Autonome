@@ -12,6 +12,7 @@ def get_config_value(cfg, key, default_value):
     if key not in cfg:
         cfg[key] = default_value
         save_config(cfg)
+        return default_value
 
     return cfg[key]
 

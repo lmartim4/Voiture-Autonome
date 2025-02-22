@@ -1,5 +1,5 @@
 from config import *
-from console import Console
+from logger import Logger
 import numpy as np
 
 cfg = load_config()
@@ -13,7 +13,10 @@ NOM_VOITURE = get_config_value(cfg, "NOM_VOITURE", "Voiture-Couleur")
 #===================================================#
 
 LIDAR_BAUDRATE   = int(get_config_value(cfg, "LIDAR_BAUDRATE", 115200))
-LIDAR_HEADING_OFFSET_DEG    = int(get_config_value(cfg, "LIDAR_HEADING_OFFSET_DEG", 90))
+LIDAR_HEADING_OFFSET_DEG    = int(get_config_value(cfg, "LIDAR_HEADING_OFFSET_DEG", -90))
+
+LIDAR_FOV_FILTER = int(get_config_value(cfg , "LIDAR_FOV_FILTER", 180)) #EXLUDES BACKWARDS READINGS
+
 FIELD_OF_VIEW_DEG    = int(get_config_value(cfg, "FIELD_OF_VIEW_DEG", 120))
 CONVOLUTION_SIZE = int(get_config_value(cfg, "CONVOLUTION_SIZE",   31))
 
