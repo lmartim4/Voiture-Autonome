@@ -1,5 +1,4 @@
 from config import *
-from logger import Logger
 import numpy as np
 
 cfg = load_config()
@@ -12,12 +11,12 @@ NOM_VOITURE = get_config_value(cfg, "NOM_VOITURE", "Voiture-Couleur")
 #                                                   #
 #===================================================#
 
-LIDAR_BAUDRATE   = int(get_config_value(cfg, "LIDAR_BAUDRATE", 115200))
-LIDAR_HEADING_OFFSET_DEG    = int(get_config_value(cfg, "LIDAR_HEADING_OFFSET_DEG", -90))
+LIDAR_BAUDRATE = int(get_config_value(cfg, "LIDAR_BAUDRATE", 115200))
+LIDAR_HEADING_OFFSET_DEG = int(get_config_value(cfg, "LIDAR_HEADING_OFFSET_DEG", -90))
 
 LIDAR_FOV_FILTER = int(get_config_value(cfg , "LIDAR_FOV_FILTER", 180)) #EXLUDES BACKWARDS READINGS
 
-FIELD_OF_VIEW_DEG    = int(get_config_value(cfg, "FIELD_OF_VIEW_DEG", 120))
+FIELD_OF_VIEW_DEG = int(get_config_value(cfg, "FIELD_OF_VIEW_DEG", 120))
 CONVOLUTION_SIZE = int(get_config_value(cfg, "CONVOLUTION_SIZE",   31))
 
 #===================================================#
@@ -47,20 +46,21 @@ STEERING_LIMIT = float(get_config_value(cfg, "STEERING_LIMIT", 18.0)) # float: d
 DC_STEER_MIN =  float(get_config_value(cfg, "DC_STEER_MIN",  5.0))    # float: duty cycle
 DC_STEER_MAX =  float(get_config_value(cfg, "DC_STEER_MAX",  10.0))   # float: duty cycle
 
-STEER2PWM_A = 0.5 * (DC_STEER_MAX - DC_STEER_MIN) / STEERING_LIMIT
-STEER2PWM_B = 0.5 * (DC_STEER_MAX + DC_STEER_MIN)
+STEER_VARIATION_RATE = 0.5 * (DC_STEER_MAX - DC_STEER_MIN) / STEERING_LIMIT
+STEER_CENTER = 0.5 * (DC_STEER_MAX + DC_STEER_MIN)
+
+print(STEER_VARIATION_RATE, STEER_CENTER)
 
 STEER_FACTOR = np.array(
     [[0.00, 0.000],
-     [10.0, 0.167],
-     [20.0, 0.360],
-     [30.0, 0.680],
-     [40.0, 0.900],
-     [50.0, 1.000]]
+     [5.0, 0.167],
+     [10.0, 0.360],
+     [15.0, 0.680],
+     [20.0, 0.900],
+     [25.0, 1.000]]
 )
 
 STEER_FACTOR[:, 1] *= STEERING_LIMIT
-
 
 #===================================================#
 #                                                   #

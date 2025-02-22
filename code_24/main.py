@@ -5,8 +5,6 @@ from logger import Logger, SENSOR
 from core import *
 from control import *
 
-console = Logger()
-
 running = False
 interface = None
 

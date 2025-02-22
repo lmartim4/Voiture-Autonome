@@ -1,14 +1,20 @@
 import traceback
+import threading
 import numpy as np
+import multiprocessing as mp
 from pynput import keyboard
-from logger import *
+import logger
 from core import *
 from control import *
-
-console = Logger()
+import lidar_interface
 
 running = False
 interface = None
+lidar_queue = mp.Queue(maxsize=1)
+lidar_proc = None
+stop_event = mp.Event()
+
+logger = logger.Logger()
 
 def on_press(key: keyboard.Key) -> None:
     """
@@ -23,8 +29,8 @@ def on_press(key: keyboard.Key) -> None:
     if key == keyboard.Key.enter and not running:
         running = True
 
-        console.info("Running...")
-        console.info("Press CTRL+C to stop the code")
+        logger.info("Running...")
+        logger.info("Press CTRL+C to stop the code")
 
 listener = keyboard.Listener(on_press=on_press)
 
@@ -34,21 +40,17 @@ def init() -> None:
     Initializes the interface elements.
     """
 
-    global interface
-
+    global interface, lidar_queue, lidar_proc
+    
     interface = {
-        "lidar": RPLidar("/dev/ttyUSB", baudrate=LIDAR_BAUDRATE),
         "steer": PWM(channel=1, frequency=50.0),
         "speed": PWM(channel=0, frequency=50.0),
         "serial": Serial("/dev/ttyACM", 115200, timeout=0.1)
     }
 
-    health = interface["lidar"].get_health()[0]
-    console.info(f"Lidar's health is {health.lower()}")
-
-    interface["lidar"].connect()
-    interface["lidar"].start_motor()
-    interface["lidar"].start()
+    # Start LIDAR process
+    lidar_proc = mp.Process(target=lidar_interface.lidar_process, args=(lidar_queue, stop_event))
+    lidar_proc.start()
 
     interface["steer"].start(7.5)
     interface["speed"].start(7.5)
@@ -63,11 +65,11 @@ def init() -> None:
     interface["serial"].read(depth=5)
 
     if interface["serial"].is_available():
-        console.info("Serial comm is stable and working")
+        logger.info("Serial comm is stable and working")
     else:
-        console.info("Serial comm is not responding, so closing it")
+        logger.info("Serial comm is not responding, so closing it")
 
-    console.info("Press ENTER to start the code")
+    logger.info("Press ENTER to start the code")
     
     #Checking for Ctrl + C to end program
     try:
@@ -81,9 +83,9 @@ def close() -> None:
     Closes the interface elements properly.
     """
 
-    global interface
+    global interface, lidar_proc, stop_event
 
-    console.info("Closing the interface elements")
+    logger.info("Closing the interface elements")
 
     steer_dc, speed_dc = stop_command()
 
@@ -93,16 +95,27 @@ def close() -> None:
     interface["steer"].stop()
     interface["speed"].stop()
     interface["serial"].close()
-    
-    try:
-        interface["lidar"].stop()
-        interface["lidar"].stop_motor()
-        interface["lidar"].disconnect()
 
-    except serial.serialutil.PortNotOpenError:
-        pass
-    
-    console.close()
+    # Stop the keyboard listener (new fix)
+    if listener is not None and listener.running:
+        logger.info("Stopping keyboard listener...")
+        listener.stop()
+        listener.join()
+            
+    # Ensure LIDAR process is stopped properly
+    if lidar_proc is not None:
+        logger.info("Stopping LIDAR process...")
+        stop_event.set()  # Notify the lidar process to stop
+        lidar_proc.join(timeout = 0.1)  # Give it time to exit
+        
+        if lidar_proc.is_alive():
+            logger.info("LIDAR process did not exit cleanly, forcing termination.")
+            lidar_proc.terminate()
+            lidar_proc.join(timeout = 0.1)
+        else:
+            logger.info("LIDAR process exited cleanly.")
+
+    logger.close()
 
 def main(bypass: bool = False) -> None:
     """
@@ -120,44 +133,40 @@ def main(bypass: bool = False) -> None:
     init()
 
     try:
-        distances = np.zeros(360, dtype=float)
+        lidar_read = np.zeros(360, dtype=float)
 
-        for scan in interface["lidar"].iter_scans():
-            scan = np.asarray(scan)[:, 1:]
+        while not stop_event.is_set():  # Stop if lidar_process stops
+            if not lidar_queue.empty():
+                lidar_read = lidar_queue.get()
 
-            indices = np.round(scan[:, 0]).astype(int)
-            indices = np.clip(indices, 0, 359)
+                if not running:
+                    continue
 
-            distances[indices] = scan[:, 1] / 1000.0
+                if np.count_nonzero(lidar_read) < 60:
+                    continue
 
-            if not running:
-                continue
+                # for index in range(1, 360):
+                #     if distances[index] == 0.0:
+                #         distances[index] = distances[index - 1]
 
-            if np.count_nonzero(distances) < 60:
-                continue
+                serial = interface["serial"].read(depth=5)
+                data = {"lidar": lidar_read, "serial": serial}
 
-            for index in range(1, 360):
-                if distances[index] == 0.0:
-                    distances[index] = distances[index - 1]
+                steer, steer_dc, target_angle = compute_steer_from_lidar(lidar_read)
+                speed, speed_dc = compute_speed(data, steer)
 
-            serial = interface["serial"].read(depth=5)
-            data = {"lidar": distances, "serial": serial}
+                logger.info(f"{serial} {steer:.2f} deg {100 * speed:.0f}%")
+                
+                if check_reverse(data):
+                    logger.info("Reverse")
+                    reverse(interface, data)
+                else:
+                    interface["steer"].set_duty_cycle(steer_dc)
+                    interface["speed"].set_duty_cycle(speed_dc)
 
-            steer, steer_dc = compute_steer(data)
-            speed, speed_dc = compute_speed(data, steer)
+                logger.log([*serial, steer, speed, lidar_read.tolist()])
 
-            console.info(f"{serial} {steer:.2f} deg {100 * speed:.0f}%")
-
-            if check_reverse(data):
-                console.info("Reverse")
-                reverse(interface, data)
-            else:
-                interface["steer"].set_duty_cycle(steer_dc)
-                interface["speed"].set_duty_cycle(speed_dc)
-
-            console.log([*serial, steer, speed, distances.tolist()])
-
-            distances = 0.0 * distances
+                lidar_read = 0.0 * lidar_read
 
     except (KeyboardInterrupt, Exception) as error:
         if not isinstance(error, KeyboardInterrupt):
@@ -165,7 +174,7 @@ def main(bypass: bool = False) -> None:
         
         if isinstance(error, RPLidarException):
             main(bypass=True)
-
+    
     close()
 
 

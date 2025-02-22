@@ -17,10 +17,7 @@ def get_config_value(cfg, key, default_value):
     return cfg[key]
 
 
-def load_config():
-    # Load the JSON config into a dictionary
-    print(f"Loading Config from {CONFIG_PATH}")
-    
+def load_config():    
     if os.path.exists(CONFIG_PATH):
         with open(CONFIG_PATH, 'r') as f:
             return json.load(f)
