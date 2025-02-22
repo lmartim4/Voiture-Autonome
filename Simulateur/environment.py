@@ -1,12 +1,9 @@
 import pygame
 import numpy as np
+import params
 
 class Environment:
     
-    black = (0, 0, 0)
-    white = (255, 255, 255)
-    red = (255, 0, 0)
-
     def __init__(self, map_name, max_size=800, padding_percent=0.05):
         """
         Initializes the simulation environment.
@@ -44,7 +41,7 @@ class Environment:
         self.map = pygame.display.set_mode((final_width, final_height))
 
         # Fill background with white
-        self.map.fill(self.white)
+        self.map.fill(params.white)
 
         # Compute position to center the image with padding
         x_offset = (final_width - new_width) // 2
@@ -61,16 +58,17 @@ class Environment:
     
     def data_storage(self,data):
         # print(len(self.pointCloud))
-        for data_dist, data_ang, data_pos in data:
-            point = self.polar2cartesian(data_dist, data_ang, data_pos)
-            if point not in self.pointCloud : 
-                self.pointCloud.append(point)
+        if data:
+            for data_dist, data_ang, data_pos in data:
+                point = self.polar2cartesian(data_dist, data_ang, data_pos)
+                if point not in self.pointCloud : 
+                    self.pointCloud.append(point)
     
     def show_sensor_data(self):
         self.infomap = self.map.copy()
 
         for point in self.pointCloud:
-            self.infomap.set_at((int(point[0]), int(point[1])),self.red)
+            self.infomap.set_at((int(point[0]), int(point[1])),params.red)
 
     def run(self):
         """Main loop to keep the window open."""

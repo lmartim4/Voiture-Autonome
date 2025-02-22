@@ -1,8 +1,9 @@
 import pygame
 import numpy as np
+import params
 
 class Lidar:
-    
+
     def __init__(self, max_range, lidar_speed, env_map, uncertainty): 
         
         # TODO : colocar speed dentro da parte de sense_obstacles (ta fixo por enquanto em 60 pontos)
@@ -70,7 +71,7 @@ class Lidar:
                     color = self.map.get_at((x,y))
 
                     # TODO : Fazer as cores serem globais
-                    if (color[0],color[1],color[2]) == (0,0,0):
+                    if (color[0],color[1],color[2]) == params.black:
                         distance = self.distance((x,y))
                         output = self.uncertainty_add(distance, angle)
                         output.append(self.position)
