@@ -8,15 +8,14 @@ from core import *
 from control import *
 import lidar_interface
 
-running = False
 interface = None
 lidar_queue = mp.Queue(maxsize=1)
 lidar_proc = None
 stop_event = mp.Event()
-
 logger = logger.Logger()
+running_loop = True
 
-def on_press(key: keyboard.Key) -> None:
+def keyboard_listener(key: keyboard.Key) -> None:
     """
     Callback function to handle key press events.
 
@@ -24,15 +23,11 @@ def on_press(key: keyboard.Key) -> None:
         key (keyboard.Key): pressed key.
     """
 
-    global running
-
-    if key == keyboard.Key.enter and not running:
-        running = True
-
+    if key == keyboard.Key.enter:
         logger.info("Running...")
         logger.info("Press CTRL+C to stop the code")
 
-listener = keyboard.Listener(on_press=on_press)
+listener = keyboard.Listener(on_press=keyboard_listener)
 
 
 def init() -> None:
@@ -49,7 +44,7 @@ def init() -> None:
     }
 
     # Start LIDAR process
-    lidar_proc = mp.Process(target=lidar_interface.lidar_process, args=(lidar_queue, stop_event))
+    lidar_proc = mp.Process(target=lidar_interface.lidar_process, args=(lidar_queue, stop_event, logger))
     lidar_proc.start()
 
     interface["steer"].start(7.5)
@@ -78,7 +73,7 @@ def init() -> None:
         pass
 
 
-def close() -> None:
+def close_interfaces():
     """
     Closes the interface elements properly.
     """
@@ -95,52 +90,22 @@ def close() -> None:
     interface["steer"].stop()
     interface["speed"].stop()
     interface["serial"].close()
-
-    # Stop the keyboard listener (new fix)
-    if listener is not None and listener.running:
-        logger.info("Stopping keyboard listener...")
-        listener.stop()
-        listener.join()
             
-    # Ensure LIDAR process is stopped properly
     if lidar_proc is not None:
-        logger.info("Stopping LIDAR process...")
-        stop_event.set()  # Notify the lidar process to stop
-        lidar_proc.join(timeout = 0.1)  # Give it time to exit
-        
-        if lidar_proc.is_alive():
-            logger.info("LIDAR process did not exit cleanly, forcing termination.")
-            lidar_proc.terminate()
-            lidar_proc.join(timeout = 0.1)
-        else:
-            logger.info("LIDAR process exited cleanly.")
+        stop_event.set()
+        lidar_proc.join()
 
     logger.close()
 
-def main(bypass: bool = False) -> None:
-    """
-    Main function to run the vehicle control logic.
 
-    Args:
-        bypass (bool, optional): bypass key press. Defaults to False.
-    """
-
-    global interface, running
-
-    if bypass:
-        running = True
-
-    init()
-
+def loop():
     try:
         lidar_read = np.zeros(360, dtype=float)
-
-        while not stop_event.is_set():  # Stop if lidar_process stops
+        
+        while not stop_event.is_set():
             if not lidar_queue.empty():
-                lidar_read = lidar_queue.get()
 
-                if not running:
-                    continue
+                lidar_read = lidar_queue.get()
 
                 if np.count_nonzero(lidar_read) < 60:
                     continue
@@ -157,7 +122,7 @@ def main(bypass: bool = False) -> None:
 
                 logger.info(f"{serial} {steer:.2f} deg {100 * speed:.0f}%")
                 
-                if check_reverse(data):
+                if check_reverse(lidar_read):
                     logger.info("Reverse")
                     reverse(interface, data)
                 else:
@@ -167,16 +132,24 @@ def main(bypass: bool = False) -> None:
                 logger.log([*serial, steer, speed, lidar_read.tolist()])
 
                 lidar_read = 0.0 * lidar_read
-
+        
+        running_loop = False
+        
     except (KeyboardInterrupt, Exception) as error:
         if not isinstance(error, KeyboardInterrupt):
+            logger.info(f"Exception: {error}")
             traceback.print_exc()
-        
-        if isinstance(error, RPLidarException):
-            main(bypass=True)
-    
-    close()
 
+        if isinstance(error, RPLidarException):
+            logger.info(f"RPLidarException: {error}")
+    
+def main():
+    init()
+    
+    while(running_loop and not stop_event.is_set()):
+        loop()
+
+    close_interfaces()
 
 if __name__ == "__main__":
     main()

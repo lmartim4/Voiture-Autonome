@@ -4,7 +4,9 @@ from scipy.signal import convolve
 from typing import Any, Dict, Tuple
 from constants import *
 
-last_reverse = None
+can_move = False # Enables Motor Control if true
+
+reverse_running = False
 reverse_counter = 0
 
 def stop_command() -> Tuple[float, float]:
@@ -69,15 +71,19 @@ def compute_alpha(lidar_readings):
     distances, angles = filter(lidar_readings)
     target_angle = angles[np.argmax(distances)]
 
+    target_angle = (target_angle + 180) % 360 - 180
+
     print(f"Compute alhpa found {target_angle}")
 
-    return -target_angle
+    return target_angle
 
 def compute_steer(alpha):
     return np.sign(alpha) * lerp(np.abs(alpha), STEER_FACTOR)
 
 def compute_pwm(steer):
+#if(can_move):
     return steer * STEER_VARIATION_RATE + STEER_CENTER
+#return 0
 
 def compute_steer_from_lidar(lidar_readings) -> Tuple[float, float, int]:
     """
@@ -138,11 +144,19 @@ def compute_speed(data: Dict[str, Any], steer: float) -> Tuple[float, float]:
     speed = (1.0 - AGGRESSIVENESS) * lerp(dfront, SPEED_FACTOR_DIST)
     speed = AGGRESSIVENESS + speed * lerp(np.abs(steer), SPEED_FACTOR_ANG)
 
-    duty_cycle = speed * SPEED2DC_A + SPEED2DC_B
+    if(can_move):
+        duty_cycle = speed * SPEED2DC_A + SPEED2DC_B
+    else:
+        duty_cycle = 0
 
     return speed, duty_cycle
 
 def check_reverse(distances) -> bool:
+    hitx, hity = get_nonzero_points_in_hitbox(distances)
+    
+    if(hitx.size > MIN_POINTS_TO_TRIGGER or hity.size > MIN_POINTS_TO_TRIGGER):
+        return True
+    
     return False
 
 def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
@@ -153,10 +167,14 @@ def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
         interface (Dict[str, Any]): dictionary containing interface components.
         data (Dict[str, Any]): dictionary containing lidar and serial data.
     """
-
-    global last_reverse
+    global reverse_running
     
-    interface["lidar"].stop()
+    if(reverse_running):
+        print("Reverse already running")
+        return
+    
+    reverse_running = True
+    #interface["lidar"].stop()
 
     #Setting ESC in reverse mode
     interface["speed"].set_duty_cycle(7.0)
@@ -184,7 +202,7 @@ def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
     interface["steer"].set_duty_cycle(0.7*steer * STEER_VARIATION_RATE + STEER_CENTER)
     interface["speed"].set_duty_cycle(PWM_REVERSE)
 
-    interface["lidar"].start()
+    #interface["lidar"].start()
     
     for _ in range(10):
         if serial[1] < 20.0:
@@ -194,9 +212,9 @@ def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
 
     interface["speed"].set_duty_cycle(7.5)
     
-    last_reverse = time.time()
+    reverse_running = False
 
-def get_nonzero_points_in_hitbox(lidar):
+def get_nonzero_points_in_hitbox(distances):
     """
     Returns only the nonzero LiDAR points inside the defined hitbox.
     
@@ -206,17 +224,16 @@ def get_nonzero_points_in_hitbox(lidar):
     Returns:
         Tuple[np.ndarray, np.ndarray]: Arrays of x and y coordinates inside the hitbox (nonzero only).
     """
+    if distances is None:
+        raise ValueError("Error: LiDAR input is None.")
 
-    # Filter valid lidar points
-    mask = (0 < lidar) & (lidar < 360)
-    distances = lidar[mask]
-    angles = np.deg2rad(np.arange(0, 360)[mask])
+    angles = np.deg2rad(np.arange(0, 360))
 
     # Convert polar to Cartesian coordinates
     x = distances * np.cos(angles)
     y = -distances * np.sin(angles)
 
     # Define hitbox conditions
-    mask_hitbox = (np.abs(y) <= HITBOX_WIDTH) & (np.abs(x) <= HITBOX_HEIGHT) & (y * x != 0)
+    mask_hitbox = (np.abs(y) <= HITBOX_WIDTH) & (np.abs(x) <= HITBOX_HEIGHT) & (y * x != 0.0)
 
     return x[mask_hitbox], y[mask_hitbox]
