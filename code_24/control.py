@@ -4,7 +4,7 @@ from scipy.signal import convolve
 from typing import Any, Dict, Tuple
 from constants import *
 
-can_move = True # Enables Motor Control if true
+can_move = False # Enables Motor Control if true
 
 reverse_running = False
 reverse_counter = 0

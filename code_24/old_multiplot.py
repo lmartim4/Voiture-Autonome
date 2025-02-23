@@ -10,7 +10,7 @@ from matplotlib.backend_bases import KeyEvent
 from control import filter, compute_steer_from_lidar, get_nonzero_points_in_hitbox
 from constants import STEERING_LIMIT
 
-#warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore")
 
 # Global configuration
 WINDOW_SIZE = 4  # seconds for the time window around the slider's value
@@ -48,6 +48,59 @@ def info(message: str) -> None:
     """
     timestamp = datetime.now().strftime("%H:%M:%S")
     print(f"\r{GREEN}{timestamp} {BLUE}[INFO]{NORMAL} {message}")
+
+def read_log_new_format(filename: str) -> pd.DataFrame:
+    """
+    Reads a log file in the new format:
+      timestamp <tab or space> [speed_sensor, rear_distance, battery_voltage, steer, speed, [pointcloud values]]
+
+    Returns a DataFrame with columns:
+      ['timestamp', 'speed_sensor', 'rear_distance', 'battery_voltage', 'steer', 'speed', 'pointcloud'].
+    """
+    records = []
+    
+    with open(filename, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                # Skip empty lines if any
+                continue
+
+            # Split only on the *first* whitespace to separate timestamp from the JSON array
+            split_line = line.split(maxsplit=1)
+            if len(split_line) < 2:
+                # If for some reason the line doesn't split properly, you can decide how to handle
+                continue
+
+            timestamp_str, array_str = split_line[0], split_line[1]
+            timestamp = float(timestamp_str)   # Convert timestamp to float
+
+            # Parse the JSON-like array (list of length 6 in your description)
+            # Example: [0.0, 0.0, 5.33, -18.0, 0.78318076, [...]]
+            parsed_data = json.loads(array_str)
+
+            speed_sensor    = parsed_data[0]
+            rear_distance   = parsed_data[1]
+            battery_voltage = parsed_data[2]
+            steer           = parsed_data[3]
+            speed           = parsed_data[4]
+            pointcloud_list = parsed_data[5]  # This should be a list of floats
+
+            # Convert the pointcloud to a NumPy array (optional)
+            pointcloud = np.array(pointcloud_list)
+
+            # Store as a dict for easy DataFrame creation
+            records.append({
+                "timestamp": timestamp,
+                "speed_sensor": speed_sensor,
+                "rear_distance": rear_distance,
+                "battery_voltage": battery_voltage,
+                "steer": steer,
+                "speed": speed,
+                "pointcloud": pointcloud
+            })
+
+    return pd.DataFrame(records)
 
 def read_log(filename: str) -> pd.DataFrame:
     """
@@ -98,7 +151,7 @@ def main(filename: str) -> None:
         filename (str): Path to the CSV log file.
     """
     info(f"Reading {UNDERLINE}{filename}{NORMAL}\n")
-    df = read_log(filename)
+    df = read_log_new_format(filename)
 
     info("Use arrow keys to change time")
     info("Press CTRL + left/right to take large steps")

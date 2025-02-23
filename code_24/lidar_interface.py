@@ -1,26 +1,30 @@
 import multiprocessing as mp
 import time
-import logger as log
 import numpy as np
 import matplotlib.pyplot as plt
 from core import RPLidar, RPLidarException
 from constants import LIDAR_BAUDRATE, LIDAR_HEADING_OFFSET_DEG, LIDAR_FOV_FILTER
+import central_logger as cl
 
-logger = None
+sensor_logger_instance = cl.CentralLogger(sensor_name="Lidar-Sensor")
+sensor_logger = sensor_logger_instance.get_logger()
 
-def lidar_process(queue, stop_event, logger_instance, port="/dev/ttyUSB", baudrate=LIDAR_BAUDRATE):
+def lidar_process(queue, stop_event, port="/dev/ttyUSB", baudrate=LIDAR_BAUDRATE):
     """
     Child process that continuously reads from the LIDAR and sends data to the queue.
     """
+    
+    sensor_logger_instance.logConsole("Message from module1")
+    
     lidar = None
-    logger = logger_instance
+    
     try:
         # Setup LIDAR
         lidar = RPLidar(port, baudrate=baudrate)
         lidar.connect()
         lidar.start_motor()
         lidar.start()
-        logger.info("[LidarProcess] LIDAR started.")
+        sensor_logger_instance.logConsole("[LidarProcess] LIDAR started.")
 
         pre_filtered_distances = np.zeros(360, dtype=float)
 
@@ -32,7 +36,7 @@ def lidar_process(queue, stop_event, logger_instance, port="/dev/ttyUSB", baudra
         for scan in scans:
             #print("Running")
             if stop_event.is_set():
-                logger.info("[LidarProcess] Detected Lidar Loop Stop Request")
+                sensor_logger_instance.logConsole("[LidarProcess] Detected Lidar Loop Stop Request")
                 lidar.stop()
                 lidar.stop_motor()
                 lidar.disconnect()
@@ -61,33 +65,33 @@ def lidar_process(queue, stop_event, logger_instance, port="/dev/ttyUSB", baudra
             shifted_distances[~keep_mask] = 0.0
 
             #Log LIDAR data
-            logger.logSensor(log.SENSOR.LIDAR, shifted_distances.tolist())
+            sensor_logger.info(shifted_distances.tolist())
 
             # Send data to the queue if there's space
             if not queue.full():
                 queue.put(shifted_distances.copy())
 
     except KeyboardInterrupt:
-        logger_instance.info("[LidarProcess] KeyboardInterrupt detected. Stopping...")
+        sensor_logger_instance.logConsole("[LidarProcess] KeyboardInterrupt detected. Stopping...")
         stop_event.set()
     except (RPLidarException, Exception) as e:
-        logger.info(f"[LidarProcess] LIDAR error exception: {e}")
+        sensor_logger_instance.logConsole(f"[LidarProcess] LIDAR error exception: {e}")
         stop_event.set()
     finally:
         if lidar is not None:
-            logger.info("[LidarProcess] Stopping LIDAR...")
+            sensor_logger_instance.logConsole("[LidarProcess] Stopping LIDAR...")
             try:
                 stop_event.set()
                 lidar.stop()
                 lidar.stop_motor()
                 lidar.disconnect()
             except Exception as e:
-                logger.info(f"[LidarProcess] Error stopping LIDAR exception: {e}")
+                sensor_logger_instance.logConsole(f"[LidarProcess] Error stopping LIDAR exception: {e}")
                 stop_event.set()
 
-        logger.info("[LidarProcess] Stopped.")
+        sensor_logger_instance.logConsole("[LidarProcess] Stopped.")
     
-    logger.info("[LidarProcess] Completelly ended")
+    sensor_logger_instance.logConsole("[LidarProcess] Completelly ended")
     
 
 def plot_process(queue, stop_event):
@@ -123,29 +127,28 @@ def plot_process(queue, stop_event):
 
     except KeyboardInterrupt:
         #print("[PlotProcess] Plotting stopped by user.")
-        logger.info("[PlotProcess] Plotting stopped by user.")
+        sensor_logger_instance.logConsole("[PlotProcess] Plotting stopped by user.")
     finally:
         plt.ioff()
         plt.close()
-        logger.info("[PlotProcess] Stopped.")
+        sensor_logger_instance.logConsole("[PlotProcess] Stopped.")
 
-if __name__ == "__main__":
+if __name__ == "__main__":    
     # Create a multiprocessing queue to exchange data between processes
-    logger = log.Logger()
     data_queue = mp.Queue(maxsize=1)
 
     # Create a stop event to signal process termination
     stop_event = mp.Event()
     
     # Start LIDAR process
-    lidar_proc = mp.Process(target=lidar_process, args=(data_queue, stop_event, logger))
+    lidar_proc = mp.Process(target=lidar_process, args=(data_queue, stop_event))
     lidar_proc.start()
 
     # Start plot process
     try:
         plot_process(data_queue, stop_event)
     finally:
-        logger.info("[Main] Terminating LIDAR process...")
+        sensor_logger_instance.logConsole("[Main] Terminating LIDAR process...")
         stop_event.set()
         lidar_proc.join()
-        logger.info("[Main] Processes terminated.")
+        sensor_logger_instance.logConsole("[Main] Processes terminated.")

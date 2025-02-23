@@ -1,14 +1,28 @@
 import traceback
+import threading
 import numpy as np
+import multiprocessing as mp
 from pynput import keyboard
-from logger import Logger, SENSOR
 from core import *
 from control import *
+import lidar_interface
+from central_logger import CentralLogger, logging
 
-running = False
 interface = None
+lidar_queue = mp.Queue(maxsize=1)
+lidar_proc = None
+stop_event = mp.Event()
+running_loop = True
 
-def on_press(key: keyboard.Key) -> None:
+
+
+# Initialize the central logger with a sensor name
+logger_instance = CentralLogger(sensor_name="main")
+logger = logger_instance.get_logger()
+
+old_multiplot = CentralLogger(sensor_name="old").get_logger()
+
+def keyboard_listener(key: keyboard.Key) -> None:
     """
     Callback function to handle key press events.
 
@@ -16,37 +30,25 @@ def on_press(key: keyboard.Key) -> None:
         key (keyboard.Key): pressed key.
     """
 
-    global running
+    if key == keyboard.Key.enter:
+        logger.info("Running...")
+        logger.info("Press CTRL+C to stop the code")
 
-    if key == keyboard.Key.enter and not running:
-        running = True
-
-        console.info("Running...")
-        console.info("Press CTRL+C to stop the code")
-
-listener = keyboard.Listener(on_press=on_press)
+listener = keyboard.Listener(on_press=keyboard_listener)
 
 
-def init() -> None:
-    """
-    Initializes the interface elements.
-    """
-
-    global interface
-
+def init():
+    global interface, lidar_queue, lidar_proc
+    
     interface = {
-        "lidar": RPLidar("/dev/ttyUSB", baudrate=LIDAR_BAUDRATE),
         "steer": PWM(channel=1, frequency=50.0),
         "speed": PWM(channel=0, frequency=50.0),
         "serial": Serial("/dev/ttyACM", 115200, timeout=0.1)
     }
 
-    health = interface["lidar"].get_health()[0]
-    console.info(f"Lidar's health is {health.lower()}")
-
-    interface["lidar"].connect()
-    interface["lidar"].start_motor()
-    interface["lidar"].start()
+    # Start LIDAR process
+    lidar_proc = mp.Process(target=lidar_interface.lidar_process, args=(lidar_queue, stop_event))
+    lidar_proc.start()
 
     interface["steer"].start(7.5)
     interface["speed"].start(7.5)
@@ -61,11 +63,11 @@ def init() -> None:
     interface["serial"].read(depth=5)
 
     if interface["serial"].is_available():
-        console.info("Serial comm is stable and working")
+        logger.info("Serial comm is stable and working")
     else:
-        console.info("Serial comm is not responding, so closing it")
+        logger.info("Serial comm is not responding, so closing it")
 
-    console.info("Press ENTER to start the code")
+    logger.info("Press ENTER to start the code")
     
     #Checking for Ctrl + C to end program
     try:
@@ -73,15 +75,55 @@ def init() -> None:
     except RuntimeError:
         pass
 
+def loop():
+    try:
+        lidar_read = np.zeros(360, dtype=float)
+        
+        while not stop_event.is_set():
+            if not lidar_queue.empty():
 
-def close() -> None:
-    """
-    Closes the interface elements properly.
-    """
+                lidar_read = lidar_queue.get()
 
-    global interface
+                if np.count_nonzero(lidar_read) < 60:
+                    continue
 
-    console.info("Closing the interface elements")
+                # for index in range(1, 360):
+                #     if distances[index] == 0.0:
+                #         distances[index] = distances[index - 1]
+
+                serial = interface["serial"].read(depth=5)
+                data = {"lidar": lidar_read, "serial": serial}
+
+                steer, steer_dc, target_angle = compute_steer_from_lidar(lidar_read)
+                speed, speed_dc = compute_speed(data, steer)
+
+                logger_instance.logConsole(f"{serial} {steer:.2f} deg {100 * speed:.0f}%")
+                
+                if check_reverse(lidar_read):
+                    logger.info("Reverse")
+                    reverse(interface, data)
+                else:
+                    interface["steer"].set_duty_cycle(steer_dc)
+                    interface["speed"].set_duty_cycle(speed_dc)
+
+                old_multiplot.debug(f"{[*serial, steer, speed, lidar_read.tolist()]}")
+
+                lidar_read = 0.0 * lidar_read
+        
+        running_loop = False
+        
+    except (KeyboardInterrupt, Exception) as error:
+        if not isinstance(error, KeyboardInterrupt):
+            logger.info(f"Exception: {error}")
+            traceback.print_exc()
+
+        if isinstance(error, RPLidarException):
+            logger.info(f"RPLidarException: {error}")
+
+def close_interfaces():
+    global interface, lidar_proc, stop_event
+
+    logger.info("Closing the interface elements")
 
     steer_dc, speed_dc = stop_command()
 
@@ -91,82 +133,20 @@ def close() -> None:
     interface["steer"].stop()
     interface["speed"].stop()
     interface["serial"].close()
-    
-    try:
-        interface["lidar"].stop()
-        interface["lidar"].stop_motor()
-        interface["lidar"].disconnect()
-
-    except serial.serialutil.PortNotOpenError:
-        pass
-    
-    console.close()
-
-def main(bypass: bool = False) -> None:
-    """
-    Main function to run the vehicle control logic.
-
-    Args:
-        bypass (bool, optional): bypass key press. Defaults to False.
-    """
-
-    global interface, running
-
-    if bypass:
-        running = True
-
-    init()
-
-    try:
-        distances = np.zeros(360, dtype=float)
-
-        for scan in interface["lidar"].iter_scans():
-            scan = np.asarray(scan)[:, 1:]
-
-            indices = np.round(scan[:, 0]).astype(int)
-            indices = np.clip(indices, 0, 359)
-
-            distances[indices] = scan[:, 1] / 1000.0
-
-            if not running:
-                continue
-
-            if np.count_nonzero(distances) < 60:
-                continue
-
-            for index in range(1, 360):
-                if distances[index] == 0.0:
-                    distances[index] = distances[index - 1]
-
-            serial = interface["serial"].read(depth=5)
-            data = {"lidar": distances, "serial": serial}
-
-            steer, steer_dc = compute_steer(data)
-            speed, speed_dc = compute_speed(data, steer)
-
-            console.info(f"{serial} {steer:.2f} deg {100 * speed:.0f}%")
-
-            if check_reverse(data):
-                console.info("Reverse")
-                reverse(interface, data)
-            else:
-                interface["steer"].set_duty_cycle(steer_dc)
-                interface["speed"].set_duty_cycle(speed_dc)
             
-            #console.log([*serial, steer, speed, distances.tolist()])
-            console.logSensor(SENSOR.LIDAR, distances.toList())
+    if lidar_proc is not None:
+        stop_event.set()
+        lidar_proc.join()
 
-            distances = 0.0 * distances
+def main():
+    logger.info(f"Starting Voiture {NOM_VOITURE}")
+    
+    init()
+    
+    while(running_loop and not stop_event.is_set()):
+        loop()
 
-    except (KeyboardInterrupt, Exception) as error:
-        if not isinstance(error, KeyboardInterrupt):
-            traceback.print_exc()
-        
-        if isinstance(error, RPLidarException):
-            main(bypass=True)
-
-    close()
-
+    close_interfaces()
 
 if __name__ == "__main__":
     main()
