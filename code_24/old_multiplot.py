@@ -7,7 +7,7 @@ from datetime import datetime
 from matplotlib import pyplot as plt
 from matplotlib.widgets import Slider, CheckButtons
 from matplotlib.backend_bases import KeyEvent
-from control import filter, compute_steer_from_lidar, get_nonzero_points_in_hitbox
+from control import convolution_filter, compute_steer_from_lidar, get_nonzero_points_in_hitbox
 from constants import STEERING_LIMIT
 
 warnings.filterwarnings("ignore")
@@ -159,6 +159,7 @@ def main(filename: str) -> None:
     # Prepare timestamps (zero-based time)
     timestamps = df["timestamp"].to_numpy()
     timestamps -= timestamps[0]
+    timestamps /= 1000
 
     # Precompute angles for converting lidar scan to x-y coordinates
     angles = np.deg2rad(np.arange(0, 360))
@@ -278,7 +279,7 @@ def main(filename: str) -> None:
         lidar_raw.set_ydata( raw_scan * cosines)
 
         # Filtered lidar
-        scan_dist, scan_angle = filter(raw_scan)
+        scan_dist, scan_angle = convolution_filter(raw_scan)
         steer, steer_pwm, target_angle = compute_steer_from_lidar(raw_scan)
         print(f"steer={steer} pwm={steer_pwm} target={target_angle}")
 

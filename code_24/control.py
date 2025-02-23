@@ -18,7 +18,7 @@ def stop_command() -> Tuple[float, float]:
     """
     return STEER_CENTER, SPEED2DC_B
 
-def filter(distances: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def convolution_filter(distances: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
     Filters the lidar points that are in the vehicle's field
     of view and smoothes the measurement using convolution.
@@ -68,7 +68,7 @@ def lerp(value: float, factor: np.ndarray) -> np.ndarray:
     return factor[index - 1, 1] + scale * delta[1]
 
 def compute_target(lidar_readings):
-    distances, angles = filter(lidar_readings)
+    distances, angles = convolution_filter(lidar_readings)
     target_angle = angles[np.argmax(distances)]
 
     target_angle = (target_angle + 180) % 360 - 180

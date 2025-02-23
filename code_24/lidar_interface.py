@@ -14,8 +14,6 @@ def lidar_process(queue, stop_event, port="/dev/ttyUSB", baudrate=LIDAR_BAUDRATE
     Child process that continuously reads from the LIDAR and sends data to the queue.
     """
     
-    sensor_logger_instance.logConsole("Message from module1")
-    
     lidar = None
     
     try:
