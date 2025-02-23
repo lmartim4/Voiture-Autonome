@@ -37,24 +37,20 @@ class LidarVisualizer:
 
         # Figure-related
         self.fig = None
-        # We'll have two Axes: polar and Cartesian
-        self.ax_polar = None
-        self.ax_cart = None
+        self.ax = None
 
         # Interactivity
         self.slider = None
         self.filter_button = None
         self.mode_button = None
-        
+
         # Toggle states
         self.show_filtered = False  # Raw vs. Filtered
-        self.show_polar = True      # Polar vs. Cartesian
+        self.show_polar = True      # Polar vs. Cartesian (Initial mode is Polar)
 
         # Plot line objects (we will create them after the axes exist)
-        self.lidar_plot_raw_polar = None
-        self.lidar_plot_filtered_polar = None
-        self.lidar_plot_raw_cart = None
-        self.lidar_plot_filtered_cart = None
+        self.lidar_plot_raw = None
+        self.lidar_plot_filtered = None
 
     @staticmethod
     def read_lidar_log(filename: str) -> pd.DataFrame:
@@ -93,105 +89,39 @@ class LidarVisualizer:
 
     def add_subplots(self, fig: plt.Figure):
         """
-        Create and configure both polar and Cartesian subplots.
+        Create and configure a single subplot, initially polar.
         """
         self.fig = fig
-        
-        # 1) Create a polar subplot
-        self.ax_polar = fig.add_subplot(1, 2, 1, projection='polar')
-        self.ax_polar.set_theta_zero_location("N")
-        self.ax_polar.set_theta_direction(-1)
+
+        # Create a single subplot, initially as polar projection
+        self.ax = fig.add_subplot(1, 1, 1, projection='polar')
         max_range = self.df["pointcloud"].apply(lambda x: max(x)).max()
-        self.ax_polar.set_ylim([0, max_range * 1.2])
-        self.ax_polar.set_title("LiDAR Scan (Polar)")
-        
-        # Create line objects for polar
-        self.lidar_plot_raw_polar, = self.ax_polar.plot([], [], 'bo', markersize=3, label="Raw LiDAR (Polar)")
-        self.lidar_plot_filtered_polar, = self.ax_polar.plot([], [], 'ro', markersize=3, label="Filtered LiDAR (Polar)")
 
-        # 2) Create a Cartesian subplot
-        self.ax_cart = fig.add_subplot(1, 2, 2)
-        self.ax_cart.set_title("LiDAR Scan (Cartesian)")
-        self.ax_cart.set_aspect('equal', adjustable='box')
-        # Set symmetrical limits so the entire circle is visible
-        self.ax_cart.set_xlim([-max_range * 1.2, max_range * 1.2])
-        self.ax_cart.set_ylim([-max_range * 1.2, max_range * 1.2])
-        self.ax_cart.grid(True)
-        
-        # Create line objects for cartesian
-        self.lidar_plot_raw_cart, = self.ax_cart.plot([], [], 'bo', markersize=3, label="Raw LiDAR (Cart)")
-        self.lidar_plot_filtered_cart, = self.ax_cart.plot([], [], 'ro', markersize=3, label="Filtered LiDAR (Cart)")
+        # Create line objects for the plot
+        self.lidar_plot_raw, = self.ax.plot([], [], 'bo', markersize=3, label="Raw LiDAR")
+        self.lidar_plot_filtered, = self.ax.plot([], [], 'ro', markersize=3, label="Filtered LiDAR")
 
-        # By default, hide Cartesian view; show polar
-        self.ax_cart.set_visible(False)
-
-        # Initialize with the first timestamp data
+        # Initialize with the first timestamp data, in polar mode initially
         self.update_plot(self.timestamps[0])
 
-    def update_plot(self, value: float):
+    def add_subplot(self, ax: plt.Axes):
         """
-        Updates both polar and cartesian plots based on the selected time (from slider).
-        Args:
-            value (float): Time value (in seconds) from the slider.
+        Accepts an existing Axes (for example, from a multiplot layout) and 
+        initializes it for LiDAR plotting.
         """
-        idx = np.argmin(np.abs(self.timestamps - value))  # Find closest timestamp
-        raw_scan = self.df.iloc[idx]["pointcloud"]
-
-        # -----------------------
-        # Update the Polar Plots
-        # -----------------------
-        self.lidar_plot_raw_polar.set_xdata(self.angles)
-        self.lidar_plot_raw_polar.set_ydata(raw_scan)
-
-        if self.show_filtered:
-            # Apply your custom convolution filter (from `control.convolution_filter`)
-            filtered_scan, filtered_angles = convolution_filter(raw_scan)
-            filtered_angles_rad = np.radians(filtered_angles)
-
-            self.lidar_plot_filtered_polar.set_xdata(filtered_angles_rad)
-            self.lidar_plot_filtered_polar.set_ydata(filtered_scan)
-        else:
-            self.lidar_plot_filtered_polar.set_xdata([])
-            self.lidar_plot_filtered_polar.set_ydata([])
-
-        # Dynamically adjust radial limit for the polar axis
-        self.ax_polar.set_ylim([0, max(raw_scan) * 1.2])
-
-        # -------------------------
-        # Update the Cartesian Plots
-        # -------------------------
-        # Convert raw data to x,y
-        x_raw = raw_scan * np.sin(self.angles)
-        y_raw = raw_scan * np.cos(self.angles)
-        self.lidar_plot_raw_cart.set_xdata(x_raw)
-        self.lidar_plot_raw_cart.set_ydata(y_raw)
-
-        if self.show_filtered:
-            # Filtered data, also convert to cartesian
-            x_filt = filtered_scan * np.sin(filtered_angles_rad)
-            y_filt = filtered_scan * np.cos(filtered_angles_rad)
-            self.lidar_plot_filtered_cart.set_xdata(x_filt)
-            self.lidar_plot_filtered_cart.set_ydata(y_filt)
-        else:
-            self.lidar_plot_filtered_cart.set_xdata([])
-            self.lidar_plot_filtered_cart.set_ydata([])
-
-        # Set titles to indicate which data is currently visible
-        current_mode = "Raw + Filtered" if self.show_filtered else "Raw"
-        if self.show_polar:
-            self.ax_polar.set_title(f"{current_mode} LiDAR (Polar) @ {self.timestamps[idx]:.2f}s")
-        else:
-            self.ax_cart.set_title(f"{current_mode} LiDAR (Cartesian) @ {self.timestamps[idx]:.2f}s")
-
-        if self.fig:
-            self.fig.canvas.draw_idle()
+        self.fig = ax.figure
+        self.ax = ax
+        max_range = self.df["pointcloud"].apply(lambda x: max(x)).max()
+        self.lidar_plot_raw, = self.ax.plot([], [], 'bo', markersize=3, label="Raw LiDAR")
+        self.lidar_plot_filtered, = self.ax.plot([], [], 'ro', markersize=3, label="Filtered LiDAR")
+        self.update_plot(self.timestamps[0])
 
     def enable_slider_and_buttons(self, fig):
         """
         Adds a time slider, filter toggle button, and plot mode button for user interaction.
         """
         self.fig = fig
-        
+
         # Slider
         slider_ax = fig.add_axes([0.2, 0.02, 0.6, 0.03])
         self.slider = Slider(
@@ -218,6 +148,99 @@ class LidarVisualizer:
         # Keyboard navigation (left/right arrow)
         fig.canvas.mpl_connect("key_press_event", self.on_key_press)
 
+    def enable_slider(self, fig: plt.Figure):
+        """
+        Adds only a time slider to the figure. This is useful when you already have
+        a multiplot layout and want to control one of the subplots.
+        """
+        self.fig = fig
+        slider_ax = fig.add_axes([0.2, 0.02, 0.6, 0.03])
+        self.slider = Slider(
+            ax=slider_ax,
+            label="Time (s)",
+            valmin=0,
+            valmax=self.timestamps[-1],
+            valinit=0,
+            valfmt="%.2f s"
+        )
+        self.slider.on_changed(self.update_plot)
+
+    def update_plot(self, value: float):
+        """
+        Updates the plot (polar or cartesian) based on the selected time and mode.
+        Args:
+            value (float): Time value (in seconds) from the slider.
+        """
+        idx = np.argmin(np.abs(self.timestamps - value))  # Find closest timestamp
+        raw_scan = self.df.iloc[idx]["pointcloud"]
+
+        if self.show_polar:
+            # -----------------------
+            # Update the Plot in Polar Mode
+            # -----------------------
+            if not hasattr(self.ax, 'set_theta_zero_location'):
+                # Save original axes position in the subplot grid
+                bbox = self.ax.get_position()
+                self.fig.delaxes(self.ax)
+                self.ax = self.fig.add_axes(bbox, projection='polar')
+                self.lidar_plot_raw, = self.ax.plot([], [], 'bo', markersize=3, label="Raw LiDAR")
+                self.lidar_plot_filtered, = self.ax.plot([], [], 'ro', markersize=3, label="Filtered LiDAR")
+            self.ax.set_theta_zero_location("N")
+            self.ax.set_theta_direction(-1)
+            max_range = self.df["pointcloud"].apply(lambda x: max(x)).max()
+            self.ax.set_ylim([0, max_range * 1.2])
+            self.ax.set_aspect('auto')
+            self.lidar_plot_raw.set_data(self.angles, raw_scan)
+
+            if self.show_filtered:
+                filtered_scan, filtered_angles = convolution_filter(raw_scan)
+                filtered_angles_rad = np.radians(filtered_angles)
+                self.lidar_plot_filtered.set_data(filtered_angles_rad, filtered_scan)
+            else:
+                self.lidar_plot_filtered.set_data([], [])
+                
+            self.ax.set_ylim([0, max(raw_scan) * 1.2])
+            current_mode = "Raw + Filtered" if self.show_filtered else "Raw"
+            self.ax.set_title(f"{current_mode} LiDAR (Polar) @ {self.timestamps[idx]:.2f}s")
+            self.ax.legend()
+
+        else:
+            # -------------------------
+            # Update the Plot in Cartesian Mode
+            # -------------------------
+            if hasattr(self.ax, 'set_theta_zero_location'):
+                bbox = self.ax.get_position()
+                self.fig.delaxes(self.ax)
+                self.ax = self.fig.add_axes(bbox)
+                self.lidar_plot_raw, = self.ax.plot([], [], 'bo', markersize=3, label="Raw LiDAR")
+                self.lidar_plot_filtered, = self.ax.plot([], [], 'ro', markersize=3, label="Filtered LiDAR")
+
+            self.ax.set_aspect('equal', adjustable='box')
+            max_range = self.df["pointcloud"].apply(lambda x: max(x)).max()
+            self.ax.set_xlim([-max_range * 1.2, max_range * 1.2])
+            self.ax.set_ylim([-max_range * 1.2, max_range * 1.2])
+            self.ax.grid(True)
+
+            x_raw = raw_scan * np.sin(self.angles)
+            y_raw = raw_scan * np.cos(self.angles)
+            self.lidar_plot_raw.set_data(x_raw, y_raw)
+
+            if self.show_filtered:
+                filtered_scan, filtered_angles = convolution_filter(raw_scan)
+                filtered_angles_rad = np.radians(filtered_angles)
+                x_filt = filtered_scan * np.sin(filtered_angles_rad)
+                y_filt = filtered_scan * np.cos(filtered_angles_rad)
+                self.lidar_plot_filtered.set_data(x_filt, y_filt)
+            else:
+                self.lidar_plot_filtered.set_data([], [])
+
+            current_mode = "Raw + Filtered" if self.show_filtered else "Raw"
+            self.ax.set_title(f"{current_mode} LiDAR (Cartesian) @ {self.timestamps[idx]:.2f}s")
+            self.ax.legend()
+
+        if self.fig:
+            self.fig.canvas.draw_idle()
+
     def on_filter_button(self, event):
         """
         Toggles the display of filtered data.
@@ -232,12 +255,12 @@ class LidarVisualizer:
         Toggles between Polar and Cartesian subplots.
         """
         self.show_polar = not self.show_polar
-
-        self.ax_polar.set_visible(self.show_polar)
-        self.ax_cart.set_visible(not self.show_polar)
-
         label = "Plot: Polar" if self.show_polar else "Plot: Cartesian"
         self.mode_button.label.set_text(label)
+        if self.show_polar:
+            self.ax.set_title("LiDAR Scan (Polar)")
+        else:
+            self.ax.set_title("LiDAR Scan (Cartesian)")
         self.update_plot(self.slider.val)
 
     def on_key_press(self, event: KeyEvent):
@@ -258,13 +281,9 @@ if __name__ == "__main__":
     try:
         filename = sys.argv[1]
         lidar_vis = LidarVisualizer(filename)
-
         fig = plt.figure(figsize=(12, 6))
-        # Create both polar and cartesian subplots
         lidar_vis.add_subplots(fig)
-        # Add the slider and buttons
         lidar_vis.enable_slider_and_buttons(fig)
-
         plt.legend()
         plt.show()
     except FileNotFoundError:
