@@ -4,7 +4,7 @@ from scipy.signal import convolve
 from typing import Any, Dict, Tuple
 from constants import *
 
-can_move = False # Enables Motor Control if true
+can_move = True # Enables Motor Control if true
 
 reverse_running = False
 reverse_counter = 0
@@ -67,14 +67,13 @@ def lerp(value: float, factor: np.ndarray) -> np.ndarray:
 
     return factor[index - 1, 1] + scale * delta[1]
 
-def compute_alpha(lidar_readings):
+def compute_target(lidar_readings):
     distances, angles = filter(lidar_readings)
     target_angle = angles[np.argmax(distances)]
 
     target_angle = (target_angle + 180) % 360 - 180
 
-    print(f"Compute alhpa found {target_angle}")
-
+    #print(f"Compute alpha found {target_angle}")
     return target_angle
 
 def compute_steer(alpha):
@@ -119,11 +118,11 @@ def compute_steer_from_lidar(lidar_readings) -> Tuple[float, float, int]:
 
     #print(delta, l_angle, r_angle)
 
-    alpha = compute_alpha(lidar_readings)
-    steer = compute_steer(alpha)
+    target = compute_target(lidar_readings)
+    steer = compute_steer(target)
     pwm = compute_pwm(steer)
 
-    return steer, pwm, alpha
+    return steer, pwm, target
 
 def compute_speed(data: Dict[str, Any], steer: float) -> Tuple[float, float]:
     """
@@ -168,7 +167,7 @@ def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
         data (Dict[str, Any]): dictionary containing lidar and serial data.
     """
     global reverse_running
-    
+
     if(reverse_running):
         print("Reverse already running")
         return
@@ -183,13 +182,13 @@ def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
     time.sleep(0.03)
     #end of setting ESC in reverse mode
 
-    for _ in range(20):
-        serial = interface["serial"].read(depth=5)
+    # for _ in range(20):
+    #     serial = interface["serial"].read(depth=5)
 
-        if 30.0 <= serial[1]:
-            break
+    #     if 30.0 <= serial[1]:
+    #         break
 
-        time.sleep(0.1)
+    #     time.sleep(0.1)
 
     distances = data["lidar"]
     indices = np.arange(-5, 6, dtype=int) + 70
@@ -204,15 +203,16 @@ def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
 
     #interface["lidar"].start()
     
+
+    reverse_running = False
+
     for _ in range(10):
-        if serial[1] < 20.0:
-            break
+        # if serial[1] < 20.0:
+        #     break
 
         time.sleep(0.1)
 
     interface["speed"].set_duty_cycle(7.5)
-    
-    reverse_running = False
 
 def get_nonzero_points_in_hitbox(distances):
     """

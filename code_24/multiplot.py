@@ -8,11 +8,12 @@ from matplotlib import pyplot as plt
 from matplotlib.widgets import Slider, CheckButtons
 from matplotlib.backend_bases import KeyEvent
 from control import filter, compute_steer_from_lidar, get_nonzero_points_in_hitbox
+from constants import STEERING_LIMIT
 
 #warnings.filterwarnings("ignore")
 
 # Global configuration
-WINDOW_SIZE = 8.0  # seconds for the time window around the slider's value
+WINDOW_SIZE = 4  # seconds for the time window around the slider's value
 NORMAL = "\33[0m"
 GREEN = "\33[32m"
 BLUE  = "\33[34m"
@@ -125,8 +126,8 @@ def main(filename: str) -> None:
     ax_lidar.set_aspect("equal")
     ax_lidar.set_xlabel("y [m]")
     ax_lidar.set_ylabel("x [m]")
-    ax_lidar.set_xlim([  2.50, -2.50])  # reversed x-axis for y [m]
-    ax_lidar.set_ylim([ -1.00,  4.00])
+    ax_lidar.set_xlim([  2.0, -2.0])  # reversed x-axis for y [m]
+    ax_lidar.set_ylim([ -0.5,  5.0])
     draw_vehicle(ax_lidar)  # draws vehicle shape for reference
 
     ax_speed.set_title("Speed")
@@ -137,7 +138,7 @@ def main(filename: str) -> None:
     ax_steer.set_title("Steer")
     ax_steer.set_xlabel("t [s]")
     ax_steer.set_ylabel("command [deg]")
-    ax_steer.set_ylim([-22.00, 22.00])
+    ax_steer.set_ylim([-STEERING_LIMIT, STEERING_LIMIT])
 
     ax_batt.set_title("Battery")
     ax_batt.set_xlabel("t [s]")
@@ -225,8 +226,8 @@ def main(filename: str) -> None:
 
         # Filtered lidar
         scan_dist, scan_angle = filter(raw_scan)
-        steer, steer_dc, target_angle = compute_steer_from_lidar(raw_scan)
-        print(steer, steer_dc, target_angle)
+        steer, steer_pwm, target_angle = compute_steer_from_lidar(raw_scan)
+        print(f"steer={steer} pwm={steer_pwm} target={target_angle}")
 
         lidar_filtered.set_xdata(-scan_dist * sines[scan_angle])
         lidar_filtered.set_ydata( scan_dist * cosines[scan_angle])

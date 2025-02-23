@@ -49,14 +49,12 @@ DC_STEER_MAX =  float(get_config_value(cfg, "DC_STEER_MAX",  10.0))   # float: d
 STEER_VARIATION_RATE = 0.5 * (DC_STEER_MAX - DC_STEER_MIN) / STEERING_LIMIT
 STEER_CENTER = 0.5 * (DC_STEER_MAX + DC_STEER_MIN)
 
-print(STEER_VARIATION_RATE, STEER_CENTER)
-
 STEER_FACTOR = np.array(
     [[0.00, 0.000],
-     [5.0, 0.167],
-     [10.0, 0.360],
-     [15.0, 0.680],
-     [20.0, 0.900],
+     [5.0, 0.05],
+     [10.0, 0.20],
+     [15.0, 0.40],
+     [20.0, 0.70],
      [25.0, 1.000]]
 )
 

@@ -24,7 +24,6 @@ SENSOR_HEADER = "timestamp/sensor/data\n"
 
 class Logger:
     def __init__(self, path: str = "../logs") -> None:
-        print("INITIALIZING LOGGER")
         """
         Initializes the Console object.
 
@@ -57,7 +56,6 @@ class Logger:
         # ----------------------------------------------
         self.file = open(self.filename, "a", encoding="utf8")
         self.file.write(HEADER)
-        print("WRITING HEADER")
         
         # ----------------------------------------------
         # Open the sensor log file
