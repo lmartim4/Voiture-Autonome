@@ -61,7 +61,7 @@ def lidar_process(queue, stop_event, logger_instance, port="/dev/ttyUSB", baudra
             shifted_distances[~keep_mask] = 0.0
 
             #Log LIDAR data
-            logger.logSensor(log.SENSOR.LIDAR, shifted_distances)
+            logger.logSensor(log.SENSOR.LIDAR, shifted_distances.tolist())
 
             # Send data to the queue if there's space
             if not queue.full():
