@@ -4,7 +4,7 @@ from tkinter import filedialog, messagebox
 import datetime
 import constants
 import matplotlib.pyplot as plt
-from alogorithm_plot import AlgorithmViewer
+from plot_algorithm import AlgorithmViewer
 
 today = datetime.date.today().strftime("%Y-%m-%d")
 logs_dir = os.path.join(os.path.dirname(__file__), "../logs/", today)

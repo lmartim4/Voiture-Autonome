@@ -144,6 +144,12 @@ class CentralLogger:
             return getattr(self, f"{self._sensor_name}")
         
         return self._main_logger  # Default to main logger
+    
+    def get_logger_by_name(self, logger_name: str):
+        """
+        Return a specific logger by its name.
+        """
+        return logging.getLogger(logger_name)
 
     def logConsole(self, message: str) -> None:
         """

@@ -1,7 +1,7 @@
 import json
 import os
 
-CONFIG_PATH = None
+CONFIG_PATH = "config.json"
 
 def get_config_value(cfg, key, default_value):
     """

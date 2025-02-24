@@ -80,10 +80,7 @@ def loop():
             if not lidar_queue.empty():
 
                 lidar_read = lidar_queue.get()
-
-                # if np.count_nonzero(lidar_read) < 60:
-                #     continue
-                 
+                                 
                 for index in range(1, 360):
                     if lidar_read[index] == 0.0:
                         lidar_read[index] = lidar_read[index - 1]

@@ -2,6 +2,8 @@ import os
 import serial
 from typing import List
 from rplidar import RPLidar, RPLidarException
+import logging  # Import the logging module
+import central_logger
 
 RPI5 = True
 CHIP_PATH = f"/sys/class/pwm/pwmchip{2 if RPI5 else 0}"
@@ -15,7 +17,7 @@ class PWM:
             channel (int): PWM channel number (0 or 1).
             frequency (float): frequency of the PWM signal in Hz.
         """
-
+        self.logger = central_logger.CentralLogger(sensor_name="PWM").get_logger()
         self.pwm_dir = f"{CHIP_PATH}/pwm{channel}"
 
         if not os.path.isdir(self.pwm_dir):
@@ -42,6 +44,7 @@ class PWM:
 
         with open(filename, "w") as file:
             file.write(f"{message}\n")
+            self.logger.debug(f"Wrote '{message}' to '{filename}'")
 
     def start(self, dc: float) -> None:
         """
@@ -53,6 +56,7 @@ class PWM:
 
         self.set_duty_cycle(dc)
         self.echo(1, f"{self.pwm_dir}/enable")
+        self.logger.info(f"PWM started with duty cycle: {dc}%")
 
     def stop(self) -> None:
         """
@@ -61,6 +65,7 @@ class PWM:
 
         self.set_duty_cycle(0)
         self.echo(0, f"{self.pwm_dir}/enable")
+        self.logger.info("PWM stopped")
 
     def set_duty_cycle(self, dc: float) -> None:
         """
@@ -73,6 +78,7 @@ class PWM:
 
         active = int(self.period * dc / 100.0)
         self.echo(active, f"{self.pwm_dir}/duty_cycle")
+        self.logger.debug(f"Duty cycle set to: {dc}% (active={active})")
 
 
 class Serial:
@@ -85,12 +91,14 @@ class Serial:
             baudrate (int): baudrate of the serial communication.
             timeout (float): timeout value in seconds.
         """
-
+        self.logger = central_logger.CentralLogger(sensor_name="Serial").get_logger()   
         try:
             self.serial = serial.Serial(port, baudrate, timeout=timeout)
+            self.logger.info(f"Serial connection established on port {port} at {baudrate} baud")
 
-        except serial.serialutil.SerialException:
+        except serial.serialutil.SerialException as e:
             self.serial = None
+            self.logger.error(f"Failed to establish serial connection on port {port}: {e}")
 
     def is_available(self) -> bool:
         """
@@ -116,8 +124,10 @@ class Serial:
 
         if depth < 0:
             self.close()
+            self.logger.error("Maximum recursion depth reached. Closing serial connection.")
 
         if self.serial is None:
+            self.logger.warning("Serial connection is not available. Returning default values.")
             return [0.01, 20.0, 7.2]  # Values to not interrupt the race
 
         self.serial.reset_input_buffer()
@@ -126,12 +136,16 @@ class Serial:
         measurement = measurement.replace("\r\n", "").split("/")
 
         if len(measurement) != 3:
+            self.logger.warning(f"Invalid measurement format: {measurement}. Retrying...")
             return self.read(depth - 1)
 
         try:
-            return [float(value) for value in measurement]
+            values = [float(value) for value in measurement]
+            self.logger.debug(f"Read values: {values}")
+            return values
 
-        except ValueError:
+        except ValueError as e:
+            self.logger.error(f"ValueError: {e}. Invalid data received: {measurement}. Retrying...")
             return self.read(depth - 1)
 
     def close(self) -> None:
@@ -142,3 +156,4 @@ class Serial:
         if self.serial is not None:
             self.serial.close()
             self.serial = None
+            self.logger.info("Serial connection closed")
