@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button
 from matplotlib.backend_bases import KeyEvent
 from typing import Tuple
-from control import convolution_filter  # Assuming you have this custom function
+from control import convolution_filter, compute_steer_from_lidar  # Assuming you have this custom function
 
 warnings.filterwarnings("ignore")
 plt.style.use(["seaborn-v0_8-whitegrid", "seaborn-v0_8-muted"])
@@ -51,6 +51,8 @@ class LidarVisualizer:
         # Plot line objects (we will create them after the axes exist)
         self.lidar_plot_raw = None
         self.lidar_plot_filtered = None
+        
+        self.target_marker = None
 
     @staticmethod
     def read_lidar_log(filename: str) -> pd.DataFrame:
@@ -185,6 +187,7 @@ class LidarVisualizer:
                 self.ax = self.fig.add_axes(bbox, projection='polar')
                 self.lidar_plot_raw, = self.ax.plot([], [], 'bo', markersize=3, label="Raw LiDAR")
                 self.lidar_plot_filtered, = self.ax.plot([], [], 'ro', markersize=3, label="Filtered LiDAR")
+                
             self.ax.set_theta_zero_location("N")
             self.ax.set_theta_direction(-1)
             max_range = self.df["pointcloud"].apply(lambda x: max(x)).max()
@@ -196,6 +199,19 @@ class LidarVisualizer:
                 filtered_scan, filtered_angles = convolution_filter(raw_scan)
                 filtered_angles_rad = np.radians(filtered_angles)
                 self.lidar_plot_filtered.set_data(filtered_angles_rad, filtered_scan)
+                
+                # --- Overlay the target marker in polar coordinates ---
+                # For example, using the index of maximum distance as target.
+            
+                target_idx = np.argmax(filtered_scan)
+                target_dist = filtered_scan[target_idx]
+                target_ang = filtered_angles_rad[target_idx]
+                if self.target_marker is None:
+                    self.target_marker, = self.ax.plot([target_ang], [target_dist], 'k*',
+                                                        markersize=12, label="Target")
+                else:
+                    self.target_marker.set_data([target_ang], [target_dist])
+                
             else:
                 self.lidar_plot_filtered.set_data([], [])
                 
@@ -203,7 +219,7 @@ class LidarVisualizer:
             current_mode = "Raw + Filtered" if self.show_filtered else "Raw"
             self.ax.set_title(f"{current_mode} LiDAR (Polar) @ {self.timestamps[idx]:.2f}s")
             self.ax.legend()
-
+                
         else:
             # -------------------------
             # Update the Plot in Cartesian Mode
@@ -214,7 +230,7 @@ class LidarVisualizer:
                 self.ax = self.fig.add_axes(bbox)
                 self.lidar_plot_raw, = self.ax.plot([], [], 'bo', markersize=3, label="Raw LiDAR")
                 self.lidar_plot_filtered, = self.ax.plot([], [], 'ro', markersize=3, label="Filtered LiDAR")
-
+            
             self.ax.set_aspect('equal', adjustable='box')
             max_range = self.df["pointcloud"].apply(lambda x: max(x)).max()
             self.ax.set_xlim([-max_range * 1.2, max_range * 1.2])
@@ -231,6 +247,23 @@ class LidarVisualizer:
                 x_filt = filtered_scan * np.sin(filtered_angles_rad)
                 y_filt = filtered_scan * np.cos(filtered_angles_rad)
                 self.lidar_plot_filtered.set_data(x_filt, y_filt)
+
+                # --- Overlay the target marker in Cartesian coordinates ---
+            
+                #steer, pwm, target = compute_steer_from_lidar(raw_scan)
+            
+                target_idx = np.argmax(filtered_scan)
+                target_dist = filtered_scan[target_idx]
+                target_ang = filtered_angles_rad[target_idx]
+                x_target = target_dist * np.sin(target_ang)
+                y_target = target_dist * np.cos(target_ang)
+                
+                if self.target_marker is None:
+                    self.target_marker, = self.ax.plot([x_target], [y_target], 'k*',
+                                                        markersize=12, label="Target")
+                else:
+                    self.target_marker.set_data([x_target], [y_target])
+                
             else:
                 self.lidar_plot_filtered.set_data([], [])
 
@@ -261,6 +294,9 @@ class LidarVisualizer:
             self.ax.set_title("LiDAR Scan (Polar)")
         else:
             self.ax.set_title("LiDAR Scan (Cartesian)")
+        
+        self.target_marker = None
+            
         self.update_plot(self.slider.val)
 
     def on_key_press(self, event: KeyEvent):
