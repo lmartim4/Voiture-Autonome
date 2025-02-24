@@ -3,10 +3,10 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 from core import RPLidar, RPLidarException
-from constants import LIDAR_BAUDRATE, LIDAR_HEADING_OFFSET_DEG, LIDAR_FOV_FILTER
+from constants import LIDAR_BAUDRATE, LIDAR_HEADING_OFFSET_DEG, LIDAR_FOV_FILTER, LIDAR_POINT_TIMEOUT_MS
 import central_logger as cl
 
-sensor_logger_instance = cl.CentralLogger(sensor_name="Lidar-Sensor")
+sensor_logger_instance = cl.CentralLogger(sensor_name="Lidar")
 sensor_logger = sensor_logger_instance.get_logger()
 
 def lidar_process(queue, stop_event, port="/dev/ttyUSB", baudrate=LIDAR_BAUDRATE):
@@ -21,18 +21,17 @@ def lidar_process(queue, stop_event, port="/dev/ttyUSB", baudrate=LIDAR_BAUDRATE
         lidar.connect()
         lidar.start_motor()
         lidar.start()
-        sensor_logger_instance.logConsole("[LidarProcess] LIDAR started.")
+        sensor_logger_instance.logConsole("[Lidar] LIDAR started.")
 
         pre_filtered_distances = np.zeros(360, dtype=float)
+        last_update_times = np.zeros(360, dtype=float)
+
 
         scans = lidar.iter_scans()
         
         for scan in scans:
             if stop_event.is_set():
-                sensor_logger_instance.logConsole("[LidarProcess] Detected Lidar Loop Stop Request")
-                # lidar.stop()
-                # lidar.stop_motor()
-                # lidar.disconnect()
+                sensor_logger_instance.logConsole("[Lidar] Stop Request")
                 break
 
             # Convert to np.array: shape (N, 3) = (quality, angle, distance)
@@ -44,6 +43,8 @@ def lidar_process(queue, stop_event, port="/dev/ttyUSB", baudrate=LIDAR_BAUDRATE
             indices = np.round(angles).astype(int)
             indices = np.clip(indices, 0, 359)
             pre_filtered_distances[indices] = lidar_readings
+            
+            last_update_times[indices] = time.time() * 1000  # Store the last update time in milliseconds
 
             # Shift for heading offset
             shifted_distances = np.roll(pre_filtered_distances,
@@ -56,7 +57,14 @@ def lidar_process(queue, stop_event, port="/dev/ttyUSB", baudrate=LIDAR_BAUDRATE
             keep_mask = ((diffs <= half_fov) |
                             (diffs >= 360 - half_fov))
             shifted_distances[~keep_mask] = 0.0
-
+            
+            # Apply timeout
+            current_time = time.time() * 1000  # Current time in milliseconds
+            time_diffs = current_time - last_update_times
+            
+            print(f"I cleared {shifted_distances[time_diffs > LIDAR_POINT_TIMEOUT_MS].shape[0]} points")
+            shifted_distances[time_diffs > LIDAR_POINT_TIMEOUT_MS] = 0.0
+            
             #Log LIDAR data
             sensor_logger.info(shifted_distances.tolist())
 
@@ -65,61 +73,58 @@ def lidar_process(queue, stop_event, port="/dev/ttyUSB", baudrate=LIDAR_BAUDRATE
                 queue.put(shifted_distances.copy())
 
     except KeyboardInterrupt:
-        sensor_logger_instance.logConsole("[LidarProcess] KeyboardInterrupt detected. Stopping...")
+        sensor_logger_instance.logConsole("[Lidar] KeyboardInterrupt detected. Stopping...")
         stop_event.set()
     except (RPLidarException, Exception) as e:
-        sensor_logger_instance.logConsole(f"[LidarProcess] LIDAR error exception: {e}")
+        sensor_logger_instance.logConsole(f"[Lidar] LIDAR error exception: {e}")
         stop_event.set()
     finally:
         if lidar is not None:
-            sensor_logger_instance.logConsole("[LidarProcess] Stopping LIDAR...")
+            sensor_logger_instance.logConsole("[Lidar] Stopping LIDAR...")
             try:
                 stop_event.set()
                 lidar.stop()
                 lidar.stop_motor()
                 lidar.disconnect()
             except Exception as e:
-                sensor_logger_instance.logConsole(f"[LidarProcess] Error stopping LIDAR exception: {e}")
-                stop_event.set()
+                sensor_logger_instance.logConsole(f"[Lidar] Error stopping LIDAR exception: {e}")
 
-        sensor_logger_instance.logConsole("[LidarProcess] Stopped.")
+        sensor_logger_instance.logConsole("[Lidar] Stopped.")
     
-    sensor_logger_instance.logConsole("[LidarProcess] Completelly ended")
+    sensor_logger_instance.logConsole("[Lidar] Completelly ended")
     
 
 def plot_process(queue, stop_event):
     """
-    Main process loop for plotting. Stops when LIDAR process stops.
+    Main process loop for plotting. Stops when LIDAR process stops or when the plot window is closed.
     """
     plt.ion()
     fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
 
-    # Ensure 0° is at the top and angles go clockwise
-    ax.set_theta_zero_location("N")
-    ax.set_theta_direction(-1)
-    ax.set_ylim(0, 5)
-
     try:
-        while not stop_event.is_set():  # Stop if lidar_process stops
+        while not stop_event.is_set():
+            # If the figure was closed, stop the process.
+            if not plt.fignum_exists(fig.number):
+                stop_event.set()
+                break
+
             if not queue.empty():
                 distances = queue.get()
                 ax.clear()
-
-                # Maintain the same settings after clearing
+                
                 ax.set_theta_zero_location("N")
-                ax.set_theta_direction(1)
+                ax.set_theta_direction(-1)
                 ax.set_ylim(0, 5)
-
+                
                 # Convert angles to radians
                 angles = np.radians(np.arange(360, 0, -1))
                 ax.scatter(angles, distances, c="red", s=5)
 
-                plt.pause(0.05)  # short pause to refresh plot
+                plt.pause(0.05)
 
-            time.sleep(0.01)  # avoid busy-loop
+            time.sleep(0.01)
 
     except KeyboardInterrupt:
-        #print("[PlotProcess] Plotting stopped by user.")
         sensor_logger_instance.logConsole("[PlotProcess] Plotting stopped by user.")
     finally:
         plt.ioff()
@@ -127,19 +132,17 @@ def plot_process(queue, stop_event):
         sensor_logger_instance.logConsole("[PlotProcess] Stopped.")
 
 if __name__ == "__main__":    
-    # Create a multiprocessing queue to exchange data between processes
     data_queue = mp.Queue(maxsize=1)
-
-    # Create a stop event to signal process termination
     stop_event = mp.Event()
     
-    # Start LIDAR process
     lidar_proc = mp.Process(target=lidar_process, args=(data_queue, stop_event))
     lidar_proc.start()
 
-    # Start plot process
     try:
         plot_process(data_queue, stop_event)
+    except KeyboardInterrupt:
+        sensor_logger_instance.logConsole("[Main] KeyboardInterrupt received. Stopping processes.")
+        stop_event.set()
     finally:
         sensor_logger_instance.logConsole("[Main] Terminating LIDAR process...")
         stop_event.set()

@@ -14,9 +14,6 @@ lidar_proc = None
 stop_event = mp.Event()
 running_loop = True
 
-
-
-# Initialize the central logger with a sensor name
 logger_instance = CentralLogger(sensor_name="main")
 logger = logger_instance.get_logger()
 
@@ -84,20 +81,20 @@ def loop():
 
                 lidar_read = lidar_queue.get()
 
-                if np.count_nonzero(lidar_read) < 60:
-                    continue
-
-                # for index in range(1, 360):
-                #     if distances[index] == 0.0:
-                #         distances[index] = distances[index - 1]
+                # if np.count_nonzero(lidar_read) < 60:
+                #     continue
+                 
+                for index in range(1, 360):
+                    if lidar_read[index] == 0.0:
+                        lidar_read[index] = lidar_read[index - 1]
 
                 serial = interface["serial"].read(depth=5)
-                data = {"lidar": lidar_read, "serial": serial}
+                data = {"serial": serial}
 
                 steer, steer_dc, target_angle = compute_steer_from_lidar(lidar_read)
                 speed, speed_dc = compute_speed(lidar_read, steer)
 
-                logger_instance.logConsole(f"{serial} {steer:.2f} deg {100 * speed:.0f}%")
+                logger_instance.logConsole(f"{serial} target={target_angle:.2f} deg Speed = {100 * speed:.0f}%")
                 
                 if check_reverse(lidar_read):
                     logger.info("Reverse")

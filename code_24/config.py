@@ -1,7 +1,7 @@
 import json
 import os
 
-CONFIG_PATH = "./config.json"
+CONFIG_PATH = None
 
 def get_config_value(cfg, key, default_value):
     """
@@ -17,13 +17,16 @@ def get_config_value(cfg, key, default_value):
     return cfg[key]
 
 
-def load_config():    
+def load_config(CONFIG_PATH):    
     if os.path.exists(CONFIG_PATH):
         with open(CONFIG_PATH, 'r') as f:
             return json.load(f)
-    
+        
     return {}
 
 def save_config(config_data):
-    with open(CONFIG_PATH, 'w') as f:
-        json.dump(config_data, f, indent=4)
+    if(CONFIG_PATH is not None):
+        with open(CONFIG_PATH, 'w') as f:
+            json.dump(config_data, f, indent=4)
+    else:
+        print("No config file path provided. Cannot save configuration.")

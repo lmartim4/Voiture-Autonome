@@ -2,6 +2,7 @@ import logging
 import datetime
 import os
 import pyperclip
+import shutil  # Added for file copying
 
 NORMAL = "\33[0m"
 GREEN = "\33[32m"
@@ -38,12 +39,31 @@ class CentralLogger:
             # Initialize both the main logger and the general logger
             cls._instance._initialize_base_logger()
             cls._instance._initialize_main_logger()
+            
+            # Backup the config file (if it exists)
+            cls._instance._backup_config_file()
 
         # Each time, set the sensor name and ensure the sensor has its own FileHandler
         cls._sensor_name = sensor_name
         cls._instance._setup_sensor_file_handler(sensor_name)
         
         return cls._instance
+
+    def _backup_config_file(self):
+        """
+        Check for the existence of a config file in the current working directory.
+        If it exists, copy it into the log directory as config.json.
+        """
+        config_source = "config.json"  # adjust the path if your config is located elsewhere
+        backup_destination = os.path.join(self._log_dir, "config.json")
+        if os.path.exists(config_source):
+            try:
+                shutil.copyfile(config_source, backup_destination)
+                self.logConsole("Config file backed up successfully.")
+            except Exception as e:
+                self.logConsole(f"Failed to backup config file: {e}")
+        else:
+            self.logConsole("Config file not found. No backup created.")
 
     def _initialize_base_logger(self):
         """Initialize a base logger for all logs, including sensor-specific logs."""
@@ -82,13 +102,12 @@ class CentralLogger:
         if not self._main_logger.handlers:
             self._main_logger.addHandler(main_file_handler)
             self._main_logger.addHandler(console_handler) 
-        
+       
     def _setup_sensor_file_handler(self, sensor_name):
         """Create a dedicated file handler for each sensor's logs without printing to console."""
-        
         if sensor_name == "old":
             pyperclip.copy(f"python old_multiplot.py \"{self._log_dir}/old.log\"")
-            self.logConsole(f"Multiplot command copied to clipboard\n")
+            self.logConsole("Multiplot command copied to clipboard\n")
         
         file_path = os.path.join(self._log_dir, f"{sensor_name}.log")
         
@@ -115,7 +134,6 @@ class CentralLogger:
         # Store the sensor logger so it doesn't use the main logger
         setattr(self, f"{sensor_name}", sensor_logger)
 
-
     def get_logger(self):
         """
         Return the appropriate logger.
@@ -127,7 +145,6 @@ class CentralLogger:
         
         return self._main_logger  # Default to main logger
 
-    
     def logConsole(self, message: str) -> None:
         """
         Log a message exclusively to the main log file and prints a colored message to the console.
@@ -136,4 +153,4 @@ class CentralLogger:
         timestamp_str = datetime.datetime.now().strftime("%H:%M:%S")
 
         # Log the message to the main log file
-        self._main_logger.log(logging.INFO,f"{GREEN}{timestamp_str} {BLUE}[INFO]{NORMAL} {message}")
+        self._main_logger.log(logging.INFO, f"{GREEN}{timestamp_str} {BLUE}[INFO]{NORMAL} {message}")

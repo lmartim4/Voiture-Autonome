@@ -1,8 +1,12 @@
+import os
 import sys
 import json
+import tkinter as tk
+from tkinter import filedialog
 import warnings
 import numpy as np
 import pandas as pd
+import datetime
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button
 from matplotlib.backend_bases import KeyEvent
@@ -13,7 +17,7 @@ from constants import DC_SPEED_MAX, DC_SPEED_MIN
 warnings.filterwarnings("ignore")
 plt.style.use(["seaborn-v0_8-whitegrid", "seaborn-v0_8-muted"])
 
-class LidarVisualizer:
+class AlgorithmViewer:
     def __init__(self, filename=None, df=None):
         """
         Initializes the LiDAR visualizer.
@@ -138,6 +142,7 @@ class LidarVisualizer:
         self.lidar_plot_raw, = self.ax.plot([], [], 'bo', markersize=3, label="Raw LiDAR")
         self.lidar_plot_filtered, = self.ax.plot([], [], 'ro', markersize=3, label="Filtered LiDAR")
         self._clear_target_marker()
+        self.origin_marker, = self.ax.plot(0, 0, 'o', color="orange", markersize=8, label="Origin")
 
     def _ensure_axes(self, mode: str):
         """
@@ -188,7 +193,7 @@ class LidarVisualizer:
 
         if self.target_marker is None:
             self.target_marker, = self.ax.plot(marker_coords[0], marker_coords[1],
-                                               'k*', markersize=12, label="Target")
+                                               'k>', markersize=12, label="Target")
         else:
             self.target_marker.set_data(marker_coords[0], marker_coords[1])
         
@@ -303,16 +308,32 @@ class LidarVisualizer:
         self.update_plot(self.timestamps[new_idx])
 
 if __name__ == "__main__":
+    # Get the filename either from the command-line argument or via file dialog.
     if len(sys.argv) < 2:
-        print("Usage: python lidar_plot.py <filename>")
-        sys.exit(1)
-    try:
+        today = datetime.date.today().strftime("%Y-%m-%d")
+        logs_dir = os.path.join(os.path.dirname(__file__), "../logs/", today)
+
+        root = tk.Tk()
+        root.withdraw()
+        logfile_path = filedialog.askopenfilename(
+            initialdir=logs_dir,
+            title="Select Log File",
+            filetypes=(("lidar files", "Lidar.log"), ("all files", "*.*"))
+        )
+
+        if not logfile_path:
+            print("No log file selected. Exiting.")
+            exit(0)
+        filename = logfile_path
+    else:
         filename = sys.argv[1]
-        lidar_vis = LidarVisualizer(filename)
+
+    try:
+        lidar_vis = AlgorithmViewer(filename)
         fig = plt.figure(figsize=(12, 6))
         lidar_vis.add_subplots(fig)
         lidar_vis.enable_slider_and_buttons(fig)
         plt.legend()
         plt.show()
     except FileNotFoundError:
-        print(f"File {sys.argv[1]} not found.")
+        print(f"File {filename} not found.")
