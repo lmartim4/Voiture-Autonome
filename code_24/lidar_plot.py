@@ -135,8 +135,7 @@ class LidarVisualizer:
         """
         self.lidar_plot_raw, = self.ax.plot([], [], 'bo', markersize=3, label="Raw LiDAR")
         self.lidar_plot_filtered, = self.ax.plot([], [], 'ro', markersize=3, label="Filtered LiDAR")
-        # Reset target marker so it can be re-created properly
-        self.target_marker = None
+        self._clear_target_marker()
 
     def _ensure_axes(self, mode: str):
         """
@@ -171,6 +170,11 @@ class LidarVisualizer:
         else:
             self.target_marker.set_data(marker_coords[0], marker_coords[1])
 
+    def _clear_target_marker(self):
+        if self.target_marker is not None:
+            self.target_marker.remove()
+            self.target_marker = None
+
     def update_plot(self, value: float):
         """
         Updates the plot (polar or cartesian) based on the slider value.
@@ -196,10 +200,7 @@ class LidarVisualizer:
                 self._update_target_marker(filtered_scan, filtered_angles_rad, mode="polar")
             else:
                 self.lidar_plot_filtered.set_data([], [])
-                # Remove persistent target marker if no filtered data is displayed
-                if self.target_marker is not None:
-                    self.target_marker.remove()
-                    self.target_marker = None
+                self._clear_target_marker()
                 
             self.ax.set_ylim([0, max(raw_scan) * 1.2])
             current_mode = "Raw + Filtered" if self.show_filtered else "Raw"
@@ -233,10 +234,7 @@ class LidarVisualizer:
                 self._update_target_marker(filtered_scan, filtered_angles_rad, mode="cartesian")
             else:
                 self.lidar_plot_filtered.set_data([], [])
-                # Remove persistent target marker if no filtered data is displayed
-                if self.target_marker is not None:
-                    self.target_marker.remove()
-                    self.target_marker = None
+                self._clear_target_marker()
 
             current_mode = "Raw + Filtered" if self.show_filtered else "Raw"
             self.ax.set_title(f"{current_mode} LiDAR (Cartesian) @ {self.timestamps[idx]:.2f}s")
@@ -261,8 +259,7 @@ class LidarVisualizer:
         self.show_polar = not self.show_polar
         label = "Plot: Polar" if self.show_polar else "Plot: Cartesian"
         self.mode_button.label.set_text(label)
-        # Clear the target marker so it can be re-created
-        self.target_marker = None
+        self._clear_target_marker()
         self.update_plot(self.slider.val)
 
     def on_key_press(self, event: KeyEvent):
