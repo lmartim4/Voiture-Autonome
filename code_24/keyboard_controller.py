@@ -1,3 +1,5 @@
+from control import activate_reverse, deactivate_reverse
+
 class KeyboardController:
     def __init__(self, console, interface):
         self.console = console
@@ -36,7 +38,13 @@ class KeyboardController:
                 self.interface["steer"].set_duty_cycle((DC_STEER_MAX + DC_STEER_MIN)/2)
         except AttributeError:
             pass
-
+        
+        try:
+            if key.char == 's':
+                deactivate_reverse(self.interface["speed"])
+        except AttributeError:
+            pass
+        
         try:
             if key.char == 'w':
                 self.interface["speed"].set_duty_cycle(7.5)
@@ -51,7 +59,7 @@ class KeyboardController:
         self.interface["speed"].set_duty_cycle(DC_SPEED_MAX)
     
     def backward(self):
-        reverse(self.interface)
+        activate_reverse(self.interface["speed"])	
         
     def left(self):
         self.console.info("Turning left!")

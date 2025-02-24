@@ -4,8 +4,6 @@ from scipy.signal import convolve
 from typing import Any, Dict, Tuple
 from constants import *
 
-can_move = False # Enables Motor Control if true
-
 reverse_running = False
 reverse_counter = 0
 
@@ -80,9 +78,7 @@ def compute_steer(alpha):
     return np.sign(alpha) * lerp(np.abs(alpha), STEER_FACTOR)
 
 def compute_pwm(steer):
-#if(can_move):
     return steer * STEER_VARIATION_RATE + STEER_CENTER
-#return 0
 
 def compute_steer_from_lidar(lidar_readings) -> Tuple[float, float, int]:
     """
@@ -124,7 +120,7 @@ def compute_steer_from_lidar(lidar_readings) -> Tuple[float, float, int]:
 
     return steer, pwm, target
 
-def compute_speed(data: Dict[str, Any], steer: float) -> Tuple[float, float]:
+def compute_speed(distances, steer: float) -> Tuple[float, float]:
     """
     Computes the speed and duty cycle based on lidar data and steering angle.
 
@@ -138,16 +134,13 @@ def compute_speed(data: Dict[str, Any], steer: float) -> Tuple[float, float]:
 
     shift = int(APERTURE_ANGLE // 2)
     
-    dfront = np.mean(np.roll(data["lidar"], shift)[:APERTURE_ANGLE])
+    dfront = np.mean(np.roll(distances, shift)[:APERTURE_ANGLE])
 
     speed = (1.0 - AGGRESSIVENESS) * lerp(dfront, SPEED_FACTOR_DIST)
     speed = AGGRESSIVENESS + speed * lerp(np.abs(steer), SPEED_FACTOR_ANG)
 
-    if(can_move):
-        duty_cycle = speed * SPEED2DC_A + SPEED2DC_B
-    else:
-        duty_cycle = 0
-
+    duty_cycle = speed * SPEED2DC_A + SPEED2DC_B
+    
     return speed, duty_cycle
 
 def check_reverse(distances) -> bool:
@@ -158,6 +151,19 @@ def check_reverse(distances) -> bool:
     
     return False
 
+def set_esc_on_reverse(speed_interface):
+    speed_interface.set_duty_cycle(7.0)
+    time.sleep(0.03)
+    speed_interface.set_duty_cycle(7.5)
+    time.sleep(0.03)
+    
+def activate_reverse(speed_interface):
+    set_esc_on_reverse(speed_interface)
+    speed_interface.set_duty_cycle(PWM_REVERSE)
+
+def deactivate_reverse(speed_interface):
+    speed_interface.set_duty_cycle(DC_SPEED_MIN)
+    
 def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
     """
     Executes the reverse maneuver based on interface and lidar data.
@@ -173,22 +179,7 @@ def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
         return
     
     reverse_running = True
-    #interface["lidar"].stop()
-
-    #Setting ESC in reverse mode
-    interface["speed"].set_duty_cycle(7.0)
-    time.sleep(0.03)
-    interface["speed"].set_duty_cycle(7.5)
-    time.sleep(0.03)
-    #end of setting ESC in reverse mode
-
-    # for _ in range(20):
-    #     serial = interface["serial"].read(depth=5)
-
-    #     if 30.0 <= serial[1]:
-    #         break
-
-    #     time.sleep(0.1)
+    set_esc_on_reverse(interface["speed"])
 
     distances = data["lidar"]
     indices = np.arange(-5, 6, dtype=int) + 70

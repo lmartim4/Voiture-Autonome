@@ -3,6 +3,12 @@ import datetime
 import os
 import pyperclip
 
+NORMAL = "\33[0m"
+GREEN = "\33[32m"
+BLUE  = "\33[34m"
+GRAY  = "\33[90m"
+UNDERLINE = "\33[4m"
+
 class CentralLogger:
     _instance = None
     _sensor_name = None
@@ -124,6 +130,10 @@ class CentralLogger:
     
     def logConsole(self, message: str) -> None:
         """
-        Log a message exclusively to the main log file.
+        Log a message exclusively to the main log file and prints a colored message to the console.
         """
-        self._main_logger.log(logging.INFO, f">> {message}")
+        # Format a timestamp for display
+        timestamp_str = datetime.datetime.now().strftime("%H:%M:%S")
+
+        # Log the message to the main log file
+        self._main_logger.log(logging.INFO,f"{GREEN}{timestamp_str} {BLUE}[INFO]{NORMAL} {message}")

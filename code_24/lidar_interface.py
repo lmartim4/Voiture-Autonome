@@ -17,7 +17,6 @@ def lidar_process(queue, stop_event, port="/dev/ttyUSB", baudrate=LIDAR_BAUDRATE
     lidar = None
     
     try:
-        # Setup LIDAR
         lidar = RPLidar(port, baudrate=baudrate)
         lidar.connect()
         lidar.start_motor()
@@ -26,18 +25,14 @@ def lidar_process(queue, stop_event, port="/dev/ttyUSB", baudrate=LIDAR_BAUDRATE
 
         pre_filtered_distances = np.zeros(360, dtype=float)
 
-        # Non-blocking read with a short timeout
         scans = lidar.iter_scans()
-
-        # "scans" is typically a list of scan “packets”
-        # Each element is [(quality, angle, distance), ...]
+        
         for scan in scans:
-            #print("Running")
             if stop_event.is_set():
                 sensor_logger_instance.logConsole("[LidarProcess] Detected Lidar Loop Stop Request")
-                lidar.stop()
-                lidar.stop_motor()
-                lidar.disconnect()
+                # lidar.stop()
+                # lidar.stop_motor()
+                # lidar.disconnect()
                 break
 
             # Convert to np.array: shape (N, 3) = (quality, angle, distance)

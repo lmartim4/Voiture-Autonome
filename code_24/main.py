@@ -95,7 +95,7 @@ def loop():
                 data = {"lidar": lidar_read, "serial": serial}
 
                 steer, steer_dc, target_angle = compute_steer_from_lidar(lidar_read)
-                speed, speed_dc = compute_speed(data, steer)
+                speed, speed_dc = compute_speed(lidar_read, steer)
 
                 logger_instance.logConsole(f"{serial} {steer:.2f} deg {100 * speed:.0f}%")
                 

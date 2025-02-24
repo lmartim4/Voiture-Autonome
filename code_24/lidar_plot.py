@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button
 from matplotlib.backend_bases import KeyEvent
 from typing import Tuple
-from control import convolution_filter, compute_steer_from_lidar  # Assuming you have this custom function
+from control import convolution_filter, compute_steer_from_lidar, compute_speed
+from constants import DC_SPEED_MAX, DC_SPEED_MIN
 
 warnings.filterwarnings("ignore")
 plt.style.use(["seaborn-v0_8-whitegrid", "seaborn-v0_8-muted"])
@@ -48,6 +49,7 @@ class LidarVisualizer:
         self.lidar_plot_raw = None
         self.lidar_plot_filtered = None
         self.target_marker = None
+        self.target_line = None   # <-- New line object for connecting (0,0) to target
 
     @staticmethod
     def read_lidar_log(filename: str) -> pd.DataFrame:
@@ -152,28 +154,56 @@ class LidarVisualizer:
     def _update_target_marker(self, filtered_scan: np.ndarray, filtered_angles_rad: np.ndarray, mode: str):
         """
         Updates or creates the target marker on the axes, in polar or cartesian mode.
+        The green target line length is scaled according to compute_speed using the duty cycle limits.
         """
+        from control import compute_speed, compute_steer_from_lidar  # ensure these are imported
+        from constants import DC_SPEED_MIN, DC_SPEED_MAX
+
+        # Determine the target from the filtered data
         target_idx = np.argmax(filtered_scan)
         target_dist = filtered_scan[target_idx]
         target_ang = filtered_angles_rad[target_idx]
         
+        # Compute steer and speed/duty cycle based on the filtered_scan.
+        steer, _, _ = compute_steer_from_lidar(filtered_scan)
+        speed, duty_cycle = compute_speed(filtered_scan, steer)
+        
+        # Normalize the duty cycle between DC_SPEED_MIN and DC_SPEED_MAX.
+        norm_speed = (duty_cycle - DC_SPEED_MIN) / (DC_SPEED_MAX - DC_SPEED_MIN)
+        
         if mode == "polar":
             marker_coords = ([target_ang], [target_dist])
+            # Use the normalized speed to scale the line length relative to the target distance.
+            line_angles = [target_ang, target_ang]
+            line_radii = [0, norm_speed * target_dist]
         else:
             x_target = target_dist * np.sin(target_ang)
             y_target = target_dist * np.cos(target_ang)
             marker_coords = ([x_target], [y_target])
+            # Scale the line coordinates by norm_speed.
+            x_line = norm_speed * x_target
+            y_line = norm_speed * y_target
+            line_angles = [0, x_line]
+            line_radii = [0, y_line]
 
         if self.target_marker is None:
             self.target_marker, = self.ax.plot(marker_coords[0], marker_coords[1],
                                                'k*', markersize=12, label="Target")
         else:
             self.target_marker.set_data(marker_coords[0], marker_coords[1])
+        
+        if self.target_line is None:
+            self.target_line, = self.ax.plot(line_angles, line_radii, 'g--', label="Target Vector")
+        else:
+            self.target_line.set_data(line_angles, line_radii)
 
     def _clear_target_marker(self):
         if self.target_marker is not None:
             self.target_marker.remove()
             self.target_marker = None
+        if self.target_line is not None:
+            self.target_line.remove()
+            self.target_line = None
 
     def update_plot(self, value: float):
         """
