@@ -1,15 +1,14 @@
 import cProfile
-import pstats
 import traceback
-import threading
 import time
 import numpy as np
 import multiprocessing as mp
+from rplidar import RPLidarException
 from pynput import keyboard
 from core import *
 from control import *
 import lidar_interface
-from central_logger import CentralLogger, logging
+from central_logger import CentralLogger
 
 interface = None
 lidar_proc = None

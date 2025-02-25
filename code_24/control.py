@@ -109,12 +109,9 @@ def reverse(interface: Dict[str, Any], data: Dict[str, Any]):
     interface["steer"].set_duty_cycle(0.7*steer * STEER_VARIATION_RATE + STEER_CENTER)
     interface["speed"].set_duty_cycle(PWM_REVERSE)
 
-    #interface["lidar"].start()
-    
-
     reverse_running = False
 
-    for _ in range(10):
+    for _ in range(20):
         time.sleep(0.1)
 
     interface["speed"].set_duty_cycle(7.5)
