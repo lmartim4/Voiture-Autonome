@@ -4,7 +4,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from core import RPLidar, RPLidarException
 from constants import LIDAR_BAUDRATE, LIDAR_HEADING_OFFSET_DEG, LIDAR_FOV_FILTER, LIDAR_POINT_TIMEOUT_MS
+from algorithm_visualizer import VoitureAlgorithmPlotter
 import central_logger as cl
+
+lidar_vis = None
 
 sensor_logger_instance = cl.CentralLogger(sensor_name="Lidar")
 sensor_logger = sensor_logger_instance.get_logger()
@@ -44,7 +47,7 @@ def lidar_process(queue, stop_event, port="/dev/ttyUSB", baudrate=LIDAR_BAUDRATE
             indices = np.clip(indices, 0, 359)
             pre_filtered_distances[indices] = lidar_readings
             
-            last_update_times[indices] = time.time() * 1000  # Store the last update time in milliseconds
+            last_update_times[indices] = time.time()*1000  # Store the last update time in milliseconds
 
             # Shift for heading offset
             shifted_distances = np.roll(pre_filtered_distances,
@@ -60,10 +63,13 @@ def lidar_process(queue, stop_event, port="/dev/ttyUSB", baudrate=LIDAR_BAUDRATE
             
             # Apply timeout
             current_time = time.time() * 1000  # Current time in milliseconds
-            time_diffs = current_time - last_update_times
             
-            print(f"I cleared {shifted_distances[time_diffs > LIDAR_POINT_TIMEOUT_MS].shape[0]} points")
-            shifted_distances[time_diffs > LIDAR_POINT_TIMEOUT_MS] = 0.0
+            time_diffs = current_time - last_update_times
+            valid_time_diffs = np.logical_and(time_diffs > LIDAR_POINT_TIMEOUT_MS, last_update_times > 0)
+            
+            ##print(f"clearing {shifted_distances[valid_time_diffs].size} lidar points due to timeout")
+            shifted_distances[valid_time_diffs] = 0.0
+            last_update_times[valid_time_diffs] = -1.0
             
             #Log LIDAR data
             sensor_logger.info(shifted_distances.tolist())
@@ -98,27 +104,16 @@ def plot_process(queue, stop_event):
     """
     Main process loop for plotting. Stops when LIDAR process stops or when the plot window is closed.
     """
+    
+    lidar_vis = VoitureAlgorithmPlotter()
+    
     plt.ion()
-    fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
 
     try:
         while not stop_event.is_set():
-            # If the figure was closed, stop the process.
-            if not plt.fignum_exists(fig.number):
-                stop_event.set()
-                break
-
             if not queue.empty():
                 distances = queue.get()
-                ax.clear()
-                
-                ax.set_theta_zero_location("N")
-                ax.set_theta_direction(-1)
-                ax.set_ylim(0, 5)
-                
-                # Convert angles to radians
-                angles = np.radians(np.arange(360, 0, -1))
-                ax.scatter(angles, distances, c="red", s=5)
+                lidar_vis.updateView(distances)
 
                 plt.pause(0.05)
 
