@@ -1,5 +1,8 @@
+import cProfile
+import pstats
 import traceback
 import threading
+import time
 import numpy as np
 import multiprocessing as mp
 from pynput import keyboard
@@ -9,7 +12,6 @@ import lidar_interface
 from central_logger import CentralLogger, logging
 
 interface = None
-lidar_queue = mp.Queue(maxsize=1)
 lidar_proc = None
 stop_event = mp.Event()
 running_loop = True
@@ -35,7 +37,7 @@ listener = keyboard.Listener(on_press=keyboard_listener)
 
 
 def init():
-    global interface, lidar_queue, lidar_proc
+    global interface, lidar_proc
     
     interface = {
         "steer": PWM(channel=1, frequency=50.0),
@@ -44,8 +46,11 @@ def init():
     }
 
     # Start LIDAR process
-    lidar_proc = mp.Process(target=lidar_interface.lidar_process, args=(lidar_queue, stop_event))
+    lidar_proc = mp.Process(target=lidar_interface.lidar_process, args=(lidar_interface.last_lidar_read, stop_event))
     lidar_proc.start()
+    
+    # Start live plotting (may slow things down)
+    lidar_interface.start_live_plot(lidar_interface.last_lidar_read)
 
     interface["steer"].start(7.5)
     interface["speed"].start(7.5)
@@ -66,25 +71,32 @@ def init():
 
     logger.info("Press ENTER to start the code")
     
-    #Checking for Ctrl + C to end program
+    # Checking for Ctrl + C to end program
     try:
         listener.start()
     except RuntimeError:
         pass
 
+
 def loop():
-    try:
-        lidar_read = np.zeros(360, dtype=float)
-        
-        while not stop_event.is_set():
-            if not lidar_queue.empty():
-
-                lidar_read = lidar_queue.get()
-                                 
-                for index in range(1, 360):
-                    if lidar_read[index] == 0.0:
-                        lidar_read[index] = lidar_read[index - 1]
-
+    with cProfile.Profile() as pr:
+        try:
+            lidar_read = np.zeros(360, dtype=float)
+            last_process_time = 0.0
+            
+            while not stop_event.is_set():
+                # Start measuring performance here
+                start_time = time.time()
+                
+                with lidar_interface.last_lidar_update.get_lock():
+                    if lidar_interface.last_lidar_update.value > last_process_time:
+                        last_process_time = lidar_interface.last_lidar_update.value
+                    else:
+                        continue
+                    
+                with lidar_interface.last_lidar_read.get_lock():
+                    lidar_read[:] = np.array([lidar_interface.last_lidar_read[i] for i in range(360)])
+                
                 serial = interface["serial"].read(depth=5)
                 data = {"serial": serial}
 
@@ -97,22 +109,30 @@ def loop():
                     logger.info("Reverse")
                     reverse(interface, data)
                 else:
+                    # If you want to send normal speed, replace the 0 below with speed_dc
                     interface["steer"].set_duty_cycle(steer_dc)
-                    interface["speed"].set_duty_cycle(speed_dc)
+                    interface["speed"].set_duty_cycle(0)
 
                 old_multiplot.debug(f"{[*serial, steer, speed, lidar_read.tolist()]}")
+                
+                # End measuring performance
+                end_time = time.time()
+                loop_time = end_time - start_time  # time in seconds
+                logger.debug(f"Loop execution time: {loop_time * 1000:.2f} ms")
 
-                lidar_read = 0.0 * lidar_read
-        
-        running_loop = False
-        
-    except (KeyboardInterrupt, Exception) as error:
-        if not isinstance(error, KeyboardInterrupt):
-            logger.info(f"Exception: {error}")
-            traceback.print_exc()
+                time.sleep(0.1)
+                
+            running_loop = False
+            
+        except (KeyboardInterrupt, Exception) as error:
+            if not isinstance(error, KeyboardInterrupt):
+                logger.info(f"Exception: {error}")
+                traceback.print_exc()
 
-        if isinstance(error, RPLidarException):
-            logger.info(f"RPLidarException: {error}")
+            if isinstance(error, RPLidarException):
+                logger.info(f"RPLidarException: {error}")
+                
+    pr.dump_stats("profile_results.prof")
 
 def close_interfaces():
     global interface, lidar_proc, stop_event
