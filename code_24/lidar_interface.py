@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from core import RPLidar, RPLidarException
 from constants import LIDAR_BAUDRATE, LIDAR_HEADING_OFFSET_DEG, LIDAR_FOV_FILTER, LIDAR_POINT_TIMEOUT_MS
-from algorithm_visualizer import VoitureAlgorithmPlotter
+from code_24.plot.algorithm_visualizer import VoitureAlgorithmPlotter
 import central_logger as cl
 
 lidar_vis = None

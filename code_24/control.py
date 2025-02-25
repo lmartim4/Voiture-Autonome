@@ -7,52 +7,7 @@ from constants import *
 reverse_running = False
 reverse_counter = 0
 
-def stop_command() -> Tuple[float, float]:
-    """
-    Returns commands to stop both actuators.
-
-    Returns:
-        Tuple[float, float]: commands to stop both actuators.
-    """
-    return STEER_CENTER, SPEED2DC_B
-
-def convolution_filter(distances: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Filters the lidar points that are in the vehicle's field
-    of view and smoothes the measurement using convolution.
-
-    Args:
-        distances (np.ndarray): lidar measurements in meters.
-
-    Returns:
-        Tuple[np.ndarray, np.ndarray]: filtered and smoothed lidar
-        measurements along with the respective ray angles in degrees.
-    """
-
-    shift = FIELD_OF_VIEW_DEG // 2
-
-    angles = np.arange(0, 360)
-    angles = np.roll(angles, shift)
-
-    distances = np.roll(distances, shift)
-
-    kernel = np.ones(CONVOLUTION_SIZE) / CONVOLUTION_SIZE
-    distances = convolve(distances, kernel, mode="same")
-
-    return distances[:FIELD_OF_VIEW_DEG], angles[:FIELD_OF_VIEW_DEG]
-
 def lerp(value: float, factor: np.ndarray) -> np.ndarray:
-    """
-    Linearly interpolates a value based on a given interpolation map.
-
-    Args:
-        value (float): value to be interpolated.
-        lerp_map (np.ndarray): array containing the interpolation map.
-
-    Returns:
-        np.ndarray: interpolated value.
-    """
-
     indices = np.nonzero(value < factor[:, 0])[0]
 
     if len(indices) == 0:
@@ -65,10 +20,25 @@ def lerp(value: float, factor: np.ndarray) -> np.ndarray:
 
     return factor[index - 1, 1] + scale * delta[1]
 
-def compute_target_angle_deg(filtred_distances, filtred_angles) -> int:
+def stop_command():
+    return STEER_CENTER, DC_SPEED_MIN
+
+def convolution_filter(distances: np.ndarray):
+    shift = FIELD_OF_VIEW_DEG // 2
+
+    kernel = np.ones(CONVOLUTION_SIZE) / CONVOLUTION_SIZE
+        
+    angles = np.arange(0, 360)
+    angles = np.roll(angles, shift)
+    
+    distances = np.roll(distances, shift)
+    distances = convolve(distances, kernel, mode="same")
+
+    return distances[:FIELD_OF_VIEW_DEG], angles[:FIELD_OF_VIEW_DEG]
+
+def compute_angle(filtred_distances, filtred_angles):
     target_angle = filtred_angles[np.argmax(filtred_distances)]
     target_angle = (target_angle + 180) % 360 - 180
-    
     return target_angle
 
 def compute_steer(alpha):
@@ -77,36 +47,15 @@ def compute_steer(alpha):
 def compute_pwm(steer):
     return steer * STEER_VARIATION_RATE + STEER_CENTER
 
-def compute_steer_from_lidar(lidar_readings) -> Tuple[float, float, int]:
-    """
-    Computes the steering angle and duty cycle based on lidar data.
-
-    Args:
-        data (Dict[str, Any]): dictionary containing lidar and serial data.
-
-    Returns:
-        Tuple[float, float]: computed steering angle and respective duty cycle.
-    """
-    
+def compute_steer_from_lidar(lidar_readings):    
     filtreed_distances, filtreed_angles = convolution_filter(lidar_readings)
-    target = compute_target_angle_deg(filtreed_distances, filtreed_angles)
+    target = compute_angle(filtreed_distances, filtreed_angles)
     steer = compute_steer(target)
     pwm = compute_pwm(steer)
 
     return steer, pwm, target
 
-def compute_speed(distances, steer: float) -> Tuple[float, float]:
-    """
-    Computes the speed and duty cycle based on lidar data and steering angle.
-
-    Args:
-        data (Dict[str, Any]): dictionary containing lidar and serial data.
-        steer (float): computed steering angle in degrees.
-
-    Returns:
-        Tuple[float, float]: computed speed and respective duty cycle.
-    """
-
+def compute_speed(distances, steer: float):
     shift = int(APERTURE_ANGLE // 2)
     
     dfront = np.mean(np.roll(distances, shift)[:APERTURE_ANGLE])
@@ -118,7 +67,7 @@ def compute_speed(distances, steer: float) -> Tuple[float, float]:
     
     return speed, duty_cycle
 
-def check_reverse(distances) -> bool:
+def check_reverse(distances):
     hitx, hity = get_nonzero_points_in_hitbox(distances)
     
     if(hitx.size > MIN_POINTS_TO_TRIGGER or hity.size > MIN_POINTS_TO_TRIGGER):
@@ -139,14 +88,7 @@ def activate_reverse(speed_interface):
 def deactivate_reverse(speed_interface):
     speed_interface.set_duty_cycle(DC_SPEED_MIN)
     
-def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
-    """
-    Executes the reverse maneuver based on interface and lidar data.
-
-    Args:
-        interface (Dict[str, Any]): dictionary containing interface components.
-        data (Dict[str, Any]): dictionary containing lidar and serial data.
-    """
+def reverse(interface: Dict[str, Any], data: Dict[str, Any]):
     global reverse_running
 
     if(reverse_running):
@@ -173,33 +115,23 @@ def reverse(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
     reverse_running = False
 
     for _ in range(10):
-        # if serial[1] < 20.0:
-        #     break
-
         time.sleep(0.1)
 
     interface["speed"].set_duty_cycle(7.5)
 
 def get_nonzero_points_in_hitbox(distances):
-    """
-    Returns only the nonzero LiDAR points inside the defined hitbox.
-    
-    Args:
-        lidar (np.array): Array containing lidar distance readings (360 values).
-        
-    Returns:
-        Tuple[np.ndarray, np.ndarray]: Arrays of x and y coordinates inside the hitbox (nonzero only).
-    """
     if distances is None:
         raise ValueError("Error: LiDAR input is None.")
 
-    angles = np.deg2rad(np.arange(0, 360))
+    x, y = convert_deg_to_xy(distances, np.arange(0, 360))
 
-    # Convert polar to Cartesian coordinates
-    x = distances * np.cos(angles)
-    y = -distances * np.sin(angles)
-
-    # Define hitbox conditions
-    mask_hitbox = (np.abs(y) <= HITBOX_WIDTH) & (np.abs(x) <= HITBOX_HEIGHT) & (y * x != 0.0)
+    mask_hitbox =  (y > 0) & (np.abs(y) <= HITBOX_HEIGHT) & (np.abs(x) <= HITBOX_WIDTH) & (y * x != 0.0)
 
     return x[mask_hitbox], y[mask_hitbox]
+
+@staticmethod
+def convert_deg_to_xy(distance, angle_deg):
+    angle_rad = np.radians(angle_deg) + np.pi / 2
+    x = distance * np.cos(angle_rad) * (-1)
+    y = distance * np.sin(angle_rad)
+    return x, y

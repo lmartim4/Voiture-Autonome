@@ -79,8 +79,10 @@ def load_constants(new_filepath="config.json"):
     APERTURE_ANGLE = int(get_config_value(cfg, "APERTURE_ANGLE", 20))
     DC_SPEED_MIN = float(get_config_value(cfg, "DC_SPEED_MIN", 7.6))
     DC_SPEED_MAX = float(get_config_value(cfg, "DC_SPEED_MAX", 8.2))
+    
     SPEED2DC_A = DC_SPEED_MAX - DC_SPEED_MIN
     SPEED2DC_B = DC_SPEED_MIN
+    
     SPEED_FACTOR_DIST = np.array([
         [0.00, 0.00],
         [0.25, 0.10],

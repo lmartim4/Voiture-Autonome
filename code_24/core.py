@@ -1,8 +1,6 @@
 import os
 import serial
 from typing import List
-from rplidar import RPLidar, RPLidarException
-import logging  # Import the logging module
 import central_logger
 
 RPI5 = True
