@@ -442,7 +442,7 @@ if __name__ == "__main__":
     try:
         filename = sys.argv[1]
     except IndexError:
-        print("Log file not specified. Usage: python plot_log.py <log_file.csv>")
+        print("Log file not specified. Usage: python old_multiplot.py <log_file.csv>")
         sys.exit(1)
 
     try:

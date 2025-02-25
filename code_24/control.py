@@ -65,13 +65,10 @@ def lerp(value: float, factor: np.ndarray) -> np.ndarray:
 
     return factor[index - 1, 1] + scale * delta[1]
 
-def compute_target(lidar_readings):
-    distances, angles = convolution_filter(lidar_readings)
-    target_angle = angles[np.argmax(distances)]
-
+def compute_target_angle_deg(filtred_distances, filtred_angles) -> int:
+    target_angle = filtred_angles[np.argmax(filtred_distances)]
     target_angle = (target_angle + 180) % 360 - 180
-
-    #print(f"Compute alpha found {target_angle}")
+    
     return target_angle
 
 def compute_steer(alpha):
@@ -91,30 +88,8 @@ def compute_steer_from_lidar(lidar_readings) -> Tuple[float, float, int]:
         Tuple[float, float]: computed steering angle and respective duty cycle.
     """
     
-    
-    # l_angle = AVOID_CORNER_MAX_ANGLE
-    # r_angle = AVOID_CORNER_MAX_ANGLE
-
-    # for index in range(1, 8):
-    #     l_dist = lidar_readings[(target_angle + index) % 360]
-    #     r_dist = lidar_readings[(target_angle - index) % 360]
-
-    #     if l_angle == 8 and l_dist < AVOID_CORNER_MIN_DISTANCE:
-    #         l_angle = index
-    #         #print(f"l_dist: {l_dist}")
-
-    #     if r_angle == 8 and r_dist < AVOID_CORNER_MIN_DISTANCE:
-    #         r_angle = index
-    #         #print(f"r_dist: {r_dist}")
-
-    # if l_angle > r_angle:
-    #     delta = -AVOID_CORNER_SCALE_FACTOR * (AVOID_CORNER_MAX_ANGLE - r_angle)
-    # else:
-    #     delta =  AVOID_CORNER_SCALE_FACTOR * (AVOID_CORNER_MAX_ANGLE - l_angle)
-
-    #print(delta, l_angle, r_angle)
-
-    target = compute_target(lidar_readings)
+    filtreed_distances, filtreed_angles = convolution_filter(lidar_readings)
+    target = compute_target_angle_deg(filtreed_distances, filtreed_angles)
     steer = compute_steer(target)
     pwm = compute_pwm(steer)
 
