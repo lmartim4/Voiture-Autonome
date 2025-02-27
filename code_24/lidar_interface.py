@@ -6,6 +6,7 @@ from rplidar import RPLidar, RPLidarException
 from constants import LIDAR_BAUDRATE, LIDAR_HEADING_OFFSET_DEG, LIDAR_FOV_FILTER, LIDAR_POINT_TIMEOUT_MS
 from plot.algorithm_visualizer import VoitureAlgorithmPlotter
 import central_logger as cl
+from control import get_raw_readings_from_top_right_corner
 
 lidar_vis = None
 
@@ -54,8 +55,7 @@ def lidar_process(last_lidar_read, stop_event, port="/dev/ttyUSB", baudrate=LIDA
             last_update_times[indices] = time.time()*1000  # Store the last update time in milliseconds
 
             # Shift for heading offset
-            shifted_distances = np.roll(pre_filtered_distances,
-                                        LIDAR_HEADING_OFFSET_DEG)
+            shifted_distances = np.roll(pre_filtered_distances, LIDAR_HEADING_OFFSET_DEG)
 
             for index in range(1, 360):
                 if shifted_distances[index] == 0.0:
@@ -69,6 +69,8 @@ def lidar_process(last_lidar_read, stop_event, port="/dev/ttyUSB", baudrate=LIDA
                             (diffs >= 360 - half_fov))
             shifted_distances[~keep_mask] = 0.0
             
+            #shifted_distances = get_raw_readings_from_top_right_corner(shifted_distances, True)
+            
             # Apply timeout
             current_time = time.time() * 1000  # Current time in milliseconds
             
@@ -78,6 +80,8 @@ def lidar_process(last_lidar_read, stop_event, port="/dev/ttyUSB", baudrate=LIDA
             ##print(f"clearing {shifted_distances[valid_time_diffs].size} lidar points due to timeout")
             shifted_distances[valid_time_diffs] = 0.0
             last_update_times[valid_time_diffs] = -1.0
+            
+            #shifted_distances = get_raw_readings_from_top_right_corner(shifted_distances, False)
             
             #Log LIDAR data
             sensor_logger.info(shifted_distances.tolist())

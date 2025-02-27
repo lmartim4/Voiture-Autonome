@@ -42,13 +42,12 @@ def init():
         "speed": PWM(channel=0, frequency=50.0),
         "serial": Serial("/dev/ttyACM", 115200, timeout=0.1)
     }
-
-    # Start LIDAR process
+    
     lidar_proc = mp.Process(target=lidar_interface.lidar_process, args=(lidar_interface.last_lidar_read, stop_event))
     lidar_proc.start()
     
     # Start live plotting (may slow things down)
-    lidar_interface.start_live_plot(lidar_interface.last_lidar_read)
+    #lidar_interface.start_live_plot(lidar_interface.last_lidar_read)
 
     interface["steer"].start(7.5)
     interface["speed"].start(7.5)
@@ -78,13 +77,10 @@ def init():
 
 def loop():
     try:
-        lidar_read = np.zeros(360, dtype=float)
+        raw_lidar = np.zeros(360, dtype=float)
         last_process_time = 0.0
         
         while not stop_event.is_set():
-            # Start measuring performance here
-            start_time = time.time()
-            
             with lidar_interface.last_lidar_update.get_lock():
                 if lidar_interface.last_lidar_update.value > last_process_time:
                     last_process_time = lidar_interface.last_lidar_update.value
@@ -92,24 +88,26 @@ def loop():
                     continue
                 
             with lidar_interface.last_lidar_read.get_lock():
-                lidar_read[:] = np.array([lidar_interface.last_lidar_read[i] for i in range(360)])
+                raw_lidar[:] = np.array([lidar_interface.last_lidar_read[i] for i in range(360)])
             
             serial = interface["serial"].read(depth=5)
             data = {"serial": serial}
-
-            steer, steer_dc, target_angle = compute_steer_from_lidar(lidar_read)
-            speed, speed_dc = compute_speed(lidar_read, steer)
+            
+            shrinked = shrink_space(raw_lidar)
+            
+            steer, steer_dc, target_angle = compute_steer_from_lidar(shrinked)
+            speed, speed_dc = compute_speed(shrinked, steer)
 
             logger_instance.logConsole(f"{serial} target={target_angle:.2f} deg Speed = {100 * speed:.0f}%")
             
-            if check_reverse(lidar_read):
+            if check_reverse(shrinked):
                 logger.info("Reverse")
-                reverse(interface, data)
+                reverse(interface, shrinked)
             else:
                 interface["steer"].set_duty_cycle(steer_dc)
                 interface["speed"].set_duty_cycle(speed_dc)
 
-            old_multiplot.debug(f"{[*serial, steer, speed, lidar_read.tolist()]}")
+            old_multiplot.debug(f"{[*serial, steer, speed, raw_lidar.tolist()]}")
             time.sleep(0.1)
             
         running_loop = False

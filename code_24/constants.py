@@ -27,7 +27,9 @@ def load_constants(new_filepath="config.json"):
     global APERTURE_ANGLE, DC_SPEED_MIN, DC_SPEED_MAX, SPEED2DC_A, SPEED2DC_B
     global SPEED_FACTOR_DIST, SPEED_FACTOR_ANG, AGGRESSIVENESS
     
-    global HITBOX_WIDTH, HITBOX_HEIGHT, MIN_LENGTH, MAX_LENGTH, LERP_MAP_LENGTH
+    global HITBOX_H1, HITBOX_H2, HITBOX_W
+    
+    global MIN_LENGTH, MAX_LENGTH, LERP_MAP_LENGTH
     global MIN_POINTS_TO_TRIGGER, REVERSE_CHECK_COUNTER, PWM_REVERSE, STEERING_LIMIT_IN_REVERSE
 
     # Load configuration from the current config file path.
@@ -104,11 +106,20 @@ def load_constants(new_filepath="config.json"):
     ])
     AGGRESSIVENESS = float(get_config_value(cfg, "AGGRESSIVENESS", 0.7))
 
+
+    #------------------------------------------------#
+    #                Hitbox Parameters               #
+    #------------------------------------------------#
+    
+    HITBOX_H1 = float(get_config_value(cfg, "HITBOX_H1", 0.11))
+    HITBOX_H2 = float(get_config_value(cfg, "HITBOX_H2", 0.31))
+    HITBOX_W  = float(get_config_value(cfg, "HITBOX_W", 0.11)) 
+
     #------------------------------------------------#
     #           Reverse Parameters                   #
     #------------------------------------------------#
-    HITBOX_WIDTH = float(get_config_value(cfg, "HITBOX_WIDTH", 0.20))
-    HITBOX_HEIGHT = float(get_config_value(cfg, "HITBOX_HEIGHT", 0.20))
+    
+    
     MIN_LENGTH = float(get_config_value(cfg, "MIN_LENGTH", 0.28))
     MAX_LENGTH = float(get_config_value(cfg, "MAX_LENGTH", 0.38))
     LERP_MAP_LENGTH = np.array([

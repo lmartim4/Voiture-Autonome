@@ -42,9 +42,9 @@ class VoitureAlgorithmPlotter:
         out = ax.plot(x, y, 'o')
         return out
 
-    def target_vector_plotter(self, ax, target_angle_deg):
+    def target_vector_plotter(self, ax, originx, originy, target_angle_deg, color):
         x, y = control.convert_rad_to_xy(1.0, np.radians(target_angle_deg))
-        out = ax.arrow(0, 0, x, y, head_width=0.05, head_length=0.1, fc='blue', ec='blue')
+        out = ax.arrow(originx, originy, x, y, head_width=0.05, head_length=0.1, fc=color, ec=color)
         return out
     
     def hitbox_plotter(self, ax, lidar_point_cloud):
@@ -69,21 +69,45 @@ class VoitureAlgorithmPlotter:
             self.ax_main.relim()
             self.ax_main.autoscale_view()
  
-    def updateView(self, lidar_point_cloud):
-        filtered_dist, filtred_angles = control.convolution_filter(lidar_point_cloud)
-        target_angle_deg = control.compute_angle(filtered_dist, filtred_angles)
+    def updateView(self, raw_lidar):
+        shrinked = control.shrink_space(raw_lidar)
+        filtered_dist, filtred_angles = control.convolution_filter(shrinked)
+        
+        #right_corner_distances = control.get_raw_readings_from_top_right_corner(raw_lidar, True)
+        #left_corner_distances = control.get_raw_readings_from_top_right_corner(raw_lidar, False)
+        
+        target_angle_deg, delta = control.compute_angle(filtered_dist, filtred_angles, shrinked)
 
         self.ax_main.clear()
         
-        self.raw_plot           = self.lidar_plotter(self.ax_main, lidar_point_cloud, np.linspace(0, 2*np.pi, 360, endpoint=False))
+       
+        
+        self.raw_plot           = self.lidar_plotter(self.ax_main, raw_lidar, np.linspace(0, 2*np.pi, 360, endpoint=False))
+        self.lidar_plotter(self.ax_main, shrinked, np.linspace(0, 2*np.pi, 360, endpoint=False))
+        
         self.convoluted_plot    = self.lidar_plotter(self.ax_main, filtered_dist, np.radians(filtred_angles))
         
-        self.target_arrow_plot  = self.target_vector_plotter(self.ax_main, target_angle_deg)
-        self.hitbox_plot        = self.hitbox_plotter(self.ax_main, lidar_point_cloud)
-        self.hitbox_rect        = patches.Rectangle(
-                                    (-control.HITBOX_WIDTH, 0), 2 * control.HITBOX_WIDTH,  control.HITBOX_HEIGHT,
-                                    edgecolor='red', facecolor='none', linewidth=2, linestyle='dashed', label="Hitbox")   
-        self.ax_main.add_patch(self.hitbox_rect)
+        self.target_arrow_plot  = self.target_vector_plotter(self.ax_main, 0, 0, target_angle_deg, 'red')
+        
+        self.hitbox_plot        = self.hitbox_plotter(self.ax_main, shrinked)
+        
+        self.hitbox_rect        = self.lidar_plotter(self.ax_main, control.hitbox, np.linspace(0, 2*np.pi, 360, endpoint=False))
+        
+        # self.hitbox_rect        = patches.Rectangle(
+        #                             (-control.HITBOX_WIDTH, 0), 2 * control.HITBOX_WIDTH,  control.HITBOX_HEIGHT,
+        #                             edgecolor='red', facecolor='none', linewidth=2, linestyle='dashed', label="Hitbox")   
+        # self.ax_main.add_patch(self.hitbox_rect)
+        
+        # self.lidar_plotter(self.ax_main, right_corner_distances, np.linspace(0, 2*np.pi, 360, endpoint=False))
+        # self.lidar_plotter(self.ax_main, left_corner_distances, np.linspace(0, 2*np.pi, 360, endpoint=False))
+        
+        
+        
+        #self.target_arrow_plot  = self.target_vector_plotter(self.ax_main, control.HITBOX_WIDTH, control.HITBOX_HEIGHT, target_angle_deg - delta, color='green')
+        #self.target_arrow_plot  = self.target_vector_plotter(self.ax_main, -control.HITBOX_WIDTH, control.HITBOX_HEIGHT, target_angle_deg - delta, color='green')
+        
+        
+        self.target_arrow_plot  = self.target_vector_plotter(self.ax_main, 0, 0, target_angle_deg - delta, color='blue')
         
         self.updateZoom(filtered_dist, filtred_angles)
         self.set_algorithm_visibility(self.show_algorithm)
