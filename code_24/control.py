@@ -241,8 +241,70 @@ def shrink_space(raw_lidar):
     free_space_shrink_mask = raw_lidar > 0
     shrink_space_lidar = np.copy(raw_lidar)
     shrink_space_lidar[free_space_shrink_mask] -= hitbox[free_space_shrink_mask]
-
+    
     return shrink_space_lidar
+
+def estimate_lidar_velocity(old_scan, new_scan, angles_deg, dt):
+    #Will be used to compare the estimate from control in multiplot.
+    """
+    Estimate the ego-vehicle velocity (vx, vy) in the LiDAR's reference frame
+    from two consecutive LiDAR scans 'old_scan' and 'new_scan'.
+
+    - old_scan and new_scan: 1D arrays of size 360 (distance in meters).
+    - angles_deg: array of 360 angles in degrees [0..359].
+    - dt: time in seconds between the two scans.
+
+    Returns: (vx, vy) in meters/second, where +x is forward and +y is left
+             (assuming a standard robotics convention of 0 deg = +x axis,
+             90 deg = +y axis, etc.)
+    """
+    if dt <= 1e-9:
+        raise ValueError("dt must be > 0 to compute velocity")
+
+    # Convert degrees to radians
+    angles_rad = np.deg2rad(angles_deg)
+
+    # Convert old scan to Cartesian
+    x_old = old_scan * np.cos(angles_rad)
+    y_old = old_scan * np.sin(angles_rad)
+
+    # Convert new scan to Cartesian
+    x_new = new_scan * np.cos(angles_rad)
+    y_new = new_scan * np.sin(angles_rad)
+
+    # We want to find the difference old->new. If the environment is static,
+    # the shift from (x_old, y_old) to (x_new, y_new) is effectively
+    # -1 times the ego-vehicle motion in the LiDAR frame.
+
+    # Let dx_i = x_new[i] - x_old[i]
+    # Then if dx_i is consistent across all i, that shift is your motion.
+    # But we can have outliers, zero distances, etc. We'll do a simple approach:
+    #  - Consider only angles where both scans have > 0.1m
+    #  - Then average the differences
+
+    valid_mask = (old_scan > 0.1) & (new_scan > 0.1)
+    dx = x_new[valid_mask] - x_old[valid_mask]
+    dy = y_new[valid_mask] - y_old[valid_mask]
+
+    if len(dx) < 10:
+        # Not enough valid points
+        return (0.0, 0.0)
+
+    avg_dx = np.median(dx)  # You can also use np.mean(dx)
+    avg_dy = np.median(dy)
+
+    # This is the displacement of the points from old->new.
+    # Ego motion is the negative of that (since if the environment is static,
+    # the environment points appear to shift in the opposite direction of the
+    # robot's actual motion).
+    ego_dx = -avg_dx
+    ego_dy = -avg_dy
+
+    # Velocity = displacement / dt
+    vx = ego_dx / dt
+    vy = ego_dy / dt
+
+    return vx, vy
 
 def get_raw_readings_from_top_right_corner(raw_distances, right):
     # 360 angles from 0 to 2π (exclusive)
