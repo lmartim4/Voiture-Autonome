@@ -1,10 +1,8 @@
-import cProfile
-import pstats
 import multiprocessing as mp
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from core import RPLidar, RPLidarException
+from rplidar import RPLidar, RPLidarException
 from constants import LIDAR_BAUDRATE, LIDAR_HEADING_OFFSET_DEG, LIDAR_FOV_FILTER, LIDAR_POINT_TIMEOUT_MS
 from plot.algorithm_visualizer import VoitureAlgorithmPlotter
 import central_logger as cl
@@ -120,36 +118,33 @@ def plot_process(last_lidar_read, stop_event):
     
     lidar_vis = VoitureAlgorithmPlotter()
     
-    print("Starint live plot 2")
     plt.ion()
     
-    with cProfile.Profile() as pr:
-        try:
-            lidar_read = np.zeros(360, dtype=float)
-            last_proceess_time = 0.0
-            
-            while not stop_event.is_set():
-                with last_lidar_update.get_lock():
-                    if last_lidar_update.value > last_proceess_time:
-                        last_proceess_time = last_lidar_update.value
-                    else:
-                        continue
-                    
-                with last_lidar_read.get_lock():
-                    lidar_read[:] = np.array([last_lidar_read[i] for i in range(360)])
+    try:
+        lidar_read = np.zeros(360, dtype=float)
+        last_proceess_time = 0.0
+        
+        while not stop_event.is_set():
+            with last_lidar_update.get_lock():
+                if last_lidar_update.value > last_proceess_time:
+                    last_proceess_time = last_lidar_update.value
+                else:
+                    continue
                 
-                lidar_vis.updateView(lidar_read)
-                plt.pause(0.05)            
-                time.sleep(0.1)
+            with last_lidar_read.get_lock():
+                lidar_read[:] = np.array([last_lidar_read[i] for i in range(360)])
+            
+            lidar_vis.updateView(lidar_read)
+            plt.pause(0.05)            
+            time.sleep(0.1)
 
-        except KeyboardInterrupt:
-            sensor_logger_instance.logConsole("[PlotProcess] Plotting stopped by user.")
-        finally:
-            plt.ioff()
-            plt.close()
-            sensor_logger_instance.logConsole("[PlotProcess] Stopped.")
-    
-    pr.dump_stats("plot_profile_results.prof")
+    except KeyboardInterrupt:
+        sensor_logger_instance.logConsole("[PlotProcess] Plotting stopped by user.")
+    finally:
+        plt.ioff()
+        plt.close()
+        sensor_logger_instance.logConsole("[PlotProcess] Stopped.")
+
     
 def start_live_plot(last_lidar_read):    
     live_plot_process = mp.Process(target=plot_process, args=(last_lidar_read, stop_event))

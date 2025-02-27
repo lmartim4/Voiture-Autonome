@@ -96,11 +96,11 @@ def reverse(interface: Dict[str, Any], data: Dict[str, Any]):
         return
     
     reverse_running = True
-    set_esc_on_reverse(interface["speed"])
+    activate_reverse(interface["speed"])
 
     distances = data["lidar"]
     indices = np.arange(-5, 6, dtype=int) + 70
-
+    
     r_side = np.mean(distances[(-indices) % 360])
     l_side = np.mean(distances[(+indices) % 360])
 
@@ -114,21 +114,23 @@ def reverse(interface: Dict[str, Any], data: Dict[str, Any]):
     for _ in range(20):
         time.sleep(0.1)
 
+    deactivate_reverse(interface["speed"])
+    
     interface["speed"].set_duty_cycle(7.5)
+    
 
 def get_nonzero_points_in_hitbox(distances):
     if distances is None:
         raise ValueError("Error: LiDAR input is None.")
 
-    x, y = convert_deg_to_xy(distances, np.arange(0, 360))
+    x, y = convert_rad_to_xy(distances, np.arange(0, 360))
 
     mask_hitbox =  (y > 0) & (np.abs(y) <= HITBOX_HEIGHT) & (np.abs(x) <= HITBOX_WIDTH) & (y * x != 0.0)
 
     return x[mask_hitbox], y[mask_hitbox]
 
 @staticmethod
-def convert_deg_to_xy(distance, angle_deg):
-    angle_rad = np.radians(angle_deg) + np.pi / 2
-    x = distance * np.cos(angle_rad) * (-1)
-    y = distance * np.sin(angle_rad)
+def convert_rad_to_xy(distance, angle_rad):
+    y = distance * np.cos(angle_rad)
+    x = distance * np.sin(angle_rad)
     return x, y

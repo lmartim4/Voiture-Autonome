@@ -1,4 +1,3 @@
-import cProfile
 import traceback
 import time
 import numpy as np
@@ -78,60 +77,50 @@ def init():
 
 
 def loop():
-    with cProfile.Profile() as pr:
-        try:
-            lidar_read = np.zeros(360, dtype=float)
-            last_process_time = 0.0
+    try:
+        lidar_read = np.zeros(360, dtype=float)
+        last_process_time = 0.0
+        
+        while not stop_event.is_set():
+            # Start measuring performance here
+            start_time = time.time()
             
-            while not stop_event.is_set():
-                # Start measuring performance here
-                start_time = time.time()
-                
-                with lidar_interface.last_lidar_update.get_lock():
-                    if lidar_interface.last_lidar_update.value > last_process_time:
-                        last_process_time = lidar_interface.last_lidar_update.value
-                    else:
-                        continue
-                    
-                with lidar_interface.last_lidar_read.get_lock():
-                    lidar_read[:] = np.array([lidar_interface.last_lidar_read[i] for i in range(360)])
-                
-                serial = interface["serial"].read(depth=5)
-                data = {"serial": serial}
-
-                steer, steer_dc, target_angle = compute_steer_from_lidar(lidar_read)
-                speed, speed_dc = compute_speed(lidar_read, steer)
-
-                logger_instance.logConsole(f"{serial} target={target_angle:.2f} deg Speed = {100 * speed:.0f}%")
-                
-                if check_reverse(lidar_read):
-                    logger.info("Reverse")
-                    reverse(interface, data)
+            with lidar_interface.last_lidar_update.get_lock():
+                if lidar_interface.last_lidar_update.value > last_process_time:
+                    last_process_time = lidar_interface.last_lidar_update.value
                 else:
-                    # If you want to send normal speed, replace the 0 below with speed_dc
-                    interface["steer"].set_duty_cycle(steer_dc)
-                    interface["speed"].set_duty_cycle(0)
-
-                old_multiplot.debug(f"{[*serial, steer, speed, lidar_read.tolist()]}")
+                    continue
                 
-                # End measuring performance
-                end_time = time.time()
-                loop_time = end_time - start_time  # time in seconds
-                logger.debug(f"Loop execution time: {loop_time * 1000:.2f} ms")
-
-                time.sleep(0.1)
-                
-            running_loop = False
+            with lidar_interface.last_lidar_read.get_lock():
+                lidar_read[:] = np.array([lidar_interface.last_lidar_read[i] for i in range(360)])
             
-        except (KeyboardInterrupt, Exception) as error:
-            if not isinstance(error, KeyboardInterrupt):
-                logger.info(f"Exception: {error}")
-                traceback.print_exc()
+            serial = interface["serial"].read(depth=5)
+            data = {"serial": serial}
 
-            if isinstance(error, RPLidarException):
+            steer, steer_dc, target_angle = compute_steer_from_lidar(lidar_read)
+            speed, speed_dc = compute_speed(lidar_read, steer)
+
+            logger_instance.logConsole(f"{serial} target={target_angle:.2f} deg Speed = {100 * speed:.0f}%")
+            
+            if check_reverse(lidar_read):
+                logger.info("Reverse")
+                reverse(interface, data)
+            else:
+                interface["steer"].set_duty_cycle(steer_dc)
+                interface["speed"].set_duty_cycle(speed_dc)
+
+            old_multiplot.debug(f"{[*serial, steer, speed, lidar_read.tolist()]}")
+            time.sleep(0.1)
+            
+        running_loop = False
+        
+    except (KeyboardInterrupt, Exception) as error:
+        if not isinstance(error, KeyboardInterrupt):
+            logger.info(f"Exception: {error}")
+            traceback.print_exc()
+
+        if isinstance(error, RPLidarException):
                 logger.info(f"RPLidarException: {error}")
-                
-    pr.dump_stats("profile_results.prof")
 
 def close_interfaces():
     global interface, lidar_proc, stop_event

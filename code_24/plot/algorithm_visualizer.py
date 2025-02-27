@@ -37,13 +37,13 @@ class VoitureAlgorithmPlotter:
         self.set_algorithm_visibility(self.show_algorithm)
         self.fig.canvas.draw_idle()
     
-    def lidar_plotter(self, ax, pointcloud_distance, pointcloud_angles_deg):
-        x, y = control.convert_deg_to_xy(pointcloud_distance, pointcloud_angles_deg)
+    def lidar_plotter(self, ax, pointcloud_distance, pointcloud_angles_rad):
+        x, y = control.convert_rad_to_xy(pointcloud_distance, pointcloud_angles_rad)
         out = ax.plot(x, y, 'o')
         return out
 
     def target_vector_plotter(self, ax, target_angle_deg):
-        x, y = control.convert_deg_to_xy(1.0, target_angle_deg)
+        x, y = control.convert_rad_to_xy(1.0, np.radians(target_angle_deg))
         out = ax.arrow(0, 0, x, y, head_width=0.05, head_length=0.1, fc='blue', ec='blue')
         return out
     
@@ -57,7 +57,7 @@ class VoitureAlgorithmPlotter:
 
     def updateZoom(self, filtered_dist, filtred_angles):
         if self.show_algorithm and filtered_dist.size > 0:
-            x_filtered, y_filtered = control.convert_deg_to_xy(filtered_dist, filtred_angles)
+            x_filtered, y_filtered = control.convert_rad_to_xy(filtered_dist, np.radians(filtred_angles))
             x_min, x_max = np.min(x_filtered), np.max(x_filtered)
             y_min, y_max = np.min(y_filtered), np.max(y_filtered)
         
@@ -75,8 +75,9 @@ class VoitureAlgorithmPlotter:
 
         self.ax_main.clear()
         
-        self.raw_plot           = self.lidar_plotter(self.ax_main, lidar_point_cloud, np.linspace(0, 360, 360, endpoint=False))
-        self.convoluted_plot    = self.lidar_plotter(self.ax_main, filtered_dist, filtred_angles)
+        self.raw_plot           = self.lidar_plotter(self.ax_main, lidar_point_cloud, np.linspace(0, 2*np.pi, 360, endpoint=False))
+        self.convoluted_plot    = self.lidar_plotter(self.ax_main, filtered_dist, np.radians(filtred_angles))
+        
         self.target_arrow_plot  = self.target_vector_plotter(self.ax_main, target_angle_deg)
         self.hitbox_plot        = self.hitbox_plotter(self.ax_main, lidar_point_cloud)
         self.hitbox_rect        = patches.Rectangle(
