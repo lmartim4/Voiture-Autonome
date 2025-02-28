@@ -40,15 +40,15 @@ def init():
     interface = {
         "steer": PWM(channel=1, frequency=50.0),
         "speed": PWM(channel=0, frequency=50.0),
-        "serial": Serial("/dev/ttyACM", 115200, timeout=0.1)
+        "serial": Serial("/dev/ttyACM", 9600, timeout=0.1)
     }
     
     lidar_proc = mp.Process(target=lidar_interface.lidar_process, args=(lidar_interface.last_lidar_read, stop_event))
     lidar_proc.start()
     
     # Start live plotting (may slow things down)
-    #lidar_interface.start_live_plot(lidar_interface.last_lidar_read)
-
+    lidar_interface.start_live_plot(lidar_interface.last_lidar_read)
+    
     interface["steer"].start(7.5)
     interface["speed"].start(7.5)
 
@@ -81,10 +81,12 @@ def loop():
         last_process_time = 0.0
         
         while not stop_event.is_set():
+            start_time = time.time()  # Start timing
             with lidar_interface.last_lidar_update.get_lock():
                 if lidar_interface.last_lidar_update.value > last_process_time:
                     last_process_time = lidar_interface.last_lidar_update.value
                 else:
+                    #print("No new lidar readings")
                     continue
                 
             with lidar_interface.last_lidar_read.get_lock():
@@ -98,18 +100,22 @@ def loop():
             steer, steer_dc, target_angle = compute_steer_from_lidar(shrinked)
             speed, speed_dc = compute_speed(shrinked, steer)
 
-            logger_instance.logConsole(f"{serial} target={target_angle:.2f} deg Speed = {100 * speed:.0f}%")
+            end_time = time.time()  # End timing
+            elapsed_time = end_time - start_time
+            print(f"Loop time: {elapsed_time*1000000:.2f} us")
+
+            speed_m_per_s = serial[0]/213
+            logger_instance.logConsole(f"{serial} \t target={target_angle:.2f}deg \t Speed={speed_m_per_s:.2f}m/s")
             
             if check_reverse(shrinked):
                 logger.info("Reverse")
                 reverse(interface, shrinked)
             else:
                 interface["steer"].set_duty_cycle(steer_dc)
-                interface["speed"].set_duty_cycle(speed_dc)
+                interface["speed"].set_duty_cycle(8.1)
 
             old_multiplot.debug(f"{[*serial, steer, speed, raw_lidar.tolist()]}")
-            time.sleep(0.1)
-            
+
         running_loop = False
         
     except (KeyboardInterrupt, Exception) as error:
@@ -143,7 +149,8 @@ def main():
     
     init()
     
-    while(running_loop and not stop_event.is_set()):
+    
+    while running_loop and not stop_event.is_set():
         loop()
 
     close_interfaces()

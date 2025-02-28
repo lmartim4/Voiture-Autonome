@@ -127,7 +127,7 @@ class Serial:
         if self.serial is None:
             self.logger.warning("Serial connection is not available. Returning default values.")
             return [0.01, 20.0, 7.2]  # Values to not interrupt the race
-
+        
         self.serial.reset_input_buffer()
 
         measurement = self.serial.readline().decode("utf8")

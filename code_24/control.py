@@ -23,7 +23,7 @@ def lerp(value: float, factor: np.ndarray) -> np.ndarray:
 def stop_command():
     return STEER_CENTER, DC_SPEED_MIN
 
-def convolution_filter(distances: np.ndarray):
+def convolution_filter(distances):
     shift = FIELD_OF_VIEW_DEG // 2
 
     kernel = np.ones(CONVOLUTION_SIZE) / CONVOLUTION_SIZE
@@ -39,6 +39,7 @@ def convolution_filter(distances: np.ndarray):
 def compute_angle(filtred_distances, filtred_angles, raw_lidar):
     target_angle = filtred_angles[np.argmax(filtred_distances)]
     delta = 0
+
     # l_angle = AVOID_CORNER_MAX_ANGLE
     # r_angle = AVOID_CORNER_MAX_ANGLE
     
