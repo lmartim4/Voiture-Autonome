@@ -112,7 +112,7 @@ def loop():
                 reverse(interface, shrinked)
             else:
                 interface["steer"].set_duty_cycle(steer_dc)
-                interface["speed"].set_duty_cycle(8.1)
+                interface["speed"].set_duty_cycle(8.5)
 
             old_multiplot.debug(f"{[*serial, steer, speed, raw_lidar.tolist()]}")
 
@@ -134,7 +134,7 @@ def close_interfaces():
     steer_dc, speed_dc = stop_command()
 
     interface["steer"].set_duty_cycle(steer_dc)
-    interface["speed"].set_duty_cycle(speed_dc)
+    interface["speed"].set_duty_cycle(0)
 
     interface["steer"].stop()
     interface["speed"].stop()

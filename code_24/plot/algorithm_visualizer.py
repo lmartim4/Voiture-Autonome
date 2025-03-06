@@ -63,8 +63,8 @@ class VoitureAlgorithmPlotter:
         
             pad_x = (x_max - x_min) * 0.1
             pad_y = (y_max - y_min) * 0.1
-            self.ax_main.set_xlim(x_min - pad_x, x_max + pad_x)
-            self.ax_main.set_ylim(y_min - pad_y, y_max + pad_y)
+            #self.ax_main.set_xlim(x_min - pad_x, x_max + pad_x)
+            #self.ax_main.set_ylim(y_min - pad_y, y_max + pad_y)
         else:
             self.ax_main.relim()
             self.ax_main.autoscale_view()
@@ -79,6 +79,9 @@ class VoitureAlgorithmPlotter:
         target_angle_deg, delta = control.compute_angle(filtered_dist, filtred_angles, shrinked)
 
         self.ax_main.clear()
+        self.ax_main.set_xlim(-2.0, 2.0)
+        self.ax_main.set_ylim(-0.5, 3.5)
+        self.ax_main.set_aspect("equal")
         
        
         

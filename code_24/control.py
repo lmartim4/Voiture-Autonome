@@ -23,18 +23,63 @@ def lerp(value: float, factor: np.ndarray) -> np.ndarray:
 def stop_command():
     return STEER_CENTER, DC_SPEED_MIN
 
+import numpy as np
+from scipy.signal import convolve
+
 def convolution_filter(distances):
     shift = FIELD_OF_VIEW_DEG // 2
 
-    kernel = np.ones(CONVOLUTION_SIZE) / CONVOLUTION_SIZE
-        
+    # Create a Gaussian kernel that is heavier near the center
+    # so that "front" (which is rolled to the center) gets higher weight.
+    # kernel_size = CONVOLUTION_SIZE
+    # center = 5
+    
+    # # x ranges from -center to +center
+    # x = np.arange(kernel_size) - center
+    
+    # # Adjust sigma to control how peaked the kernel is; smaller sigma => sharper peak
+    # sigma = kernel_size / 60.0  # Example: 6.0 is arbitrary; tune to taste
+    # kernel = np.exp(-0.5 * (x / sigma) ** 2)
+    
+    # # Normalize the kernel so it sums to 1
+    # kernel /= kernel.sum()
+
+
+    ## Corsi teste
+    # percentuais = np.array([0.5236, 52.8796, 35.0785, 11.5183, 0.0])
+    percentuais = np.array([ 0.69444444,  5.55555556, 56.25      ,  5.55555556,  0.1        ])
+
+    percentuais = 1/percentuais
+    
+    pesos = percentuais / np.sum(percentuais) 
+
+    tamanho_regioes = [int(CONVOLUTION_SIZE * p) for p in pesos]
+
+    tamanho_regioes[-1] += CONVOLUTION_SIZE - sum(tamanho_regioes)
+
+    kernel = np.zeros(CONVOLUTION_SIZE)
+    inicio = 0
+    for i, tamanho in enumerate(tamanho_regioes):
+        kernel[inicio:inicio + tamanho] = pesos[i]
+        inicio += tamanho
+
+    kernel /= np.sum(kernel)
+
+    ## fim corsi teste
+
+    # Roll angles so the "front" starts around the middle
     angles = np.arange(0, 360)
     angles = np.roll(angles, shift)
-    
+
+    # Roll distances likewise
     distances = np.roll(distances, shift)
+    
+    # Convolve using our custom kernel
     distances = convolve(distances, kernel, mode="same")
 
+    # Return only the portion corresponding to FIELD_OF_VIEW_DEG
     return distances[:FIELD_OF_VIEW_DEG], angles[:FIELD_OF_VIEW_DEG]
+
 
 def compute_angle(filtred_distances, filtred_angles, raw_lidar):
     target_angle = filtred_angles[np.argmax(filtred_distances)]
