@@ -148,6 +148,7 @@ def main(bypass: bool = False) -> None:
             if np.count_nonzero(distances) < 60:
                 continue
 
+            # Preenchendo lacunas nos dados do LiDAR
             for index in range(1, 360):
                 if distances[index] == 0.0:
                     distances[index] = distances[index - 1]
@@ -157,29 +158,13 @@ def main(bypass: bool = False) -> None:
 
             # Processamento da câmera
             camera = interface["camera"]
-            avg_r, avg_g, count_r, count_g = camera.process_stream()
-
-            if check_reversed_camera(camera == False):
-                console.info("Bien orienté !")
 
             if check_reversed_camera(camera):
-                console.info("Inversion d'orientation détectée ! Corriger...")
-                
-                # Définition d'une commande de correction :
-                # Exemple : ajuster le PWM du servo pour faire tourner le chariot et réduire la vitesse
-                # Les valeurs ci-dessous sont illustratives ; ajustez-les en fonction du comportement de votre chariot.
-                corretion_steer_pwm = STEER2PWM_B - (STEERING_LIMIT * STEER2PWM_A)  # Comando para virar na direção oposta
-                interface["steer"].set_duty_cycle(corretion_steer_pwm)
-                
-                # Réduire la vitesse pour permettre une correction sûre (à l'aide d'un PWM inversé, par exemple)
-                interface["speed"].set_duty_cycle(PWM_REVERSE)
-                
-                # Facultatif : attendre un peu pour que la correction prenne effet
-                time.sleep(0.5)
-                
-                # Sauter le reste de la boucle pour éviter les conflits avec les commandes normales
-                continue
+                console.info("Inversion d'orientation détectée ! Vérification du LiDAR...")
+                reversing_direction(interface, data, distances)
+                continue  # Evitar o restante do processamento normal enquanto corrige a orientação
 
+            # Cálculo da direção e velocidade normais
             steer, steer_pwm = compute_steer(data)
             speed, speed_pwm = compute_speed(data, steer)
 
@@ -187,15 +172,12 @@ def main(bypass: bool = False) -> None:
 
             if check_reverse(data):
                 console.info("Reverse")
-                reverse(interface, data)
-
+                reverse_with_camera(interface, interface["camera"])
             else:
                 interface["steer"].set_duty_cycle(steer_pwm)
                 interface["speed"].set_duty_cycle(speed_pwm)
 
             console.log([*serial, steer_pwm, speed, distances.tolist()])
-
-            distances = 0.0 * distances
 
     except (KeyboardInterrupt, Exception) as error:
         if not isinstance(error, KeyboardInterrupt):
