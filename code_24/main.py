@@ -161,7 +161,7 @@ def main(bypass: bool = False) -> None:
 
             if check_reversed_camera(camera):
                 console.info("Inversion d'orientation détectée ! Vérification du LiDAR...")
-                reversing_direction(interface, data, distances)
+                reversing_direction(interface, data)
                 continue  # Evitar o restante do processamento normal enquanto corrige a orientação
 
             # Cálculo da direção e velocidade normais

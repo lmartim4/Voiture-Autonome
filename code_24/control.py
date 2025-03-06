@@ -1,5 +1,5 @@
 import time
-from code_24 import console
+from console import Console
 import numpy as np
 from scipy.signal import convolve
 from typing import Any, Dict, Tuple
@@ -264,7 +264,7 @@ def check_reversed_camera(camera: Camera) -> bool:
         return False
     
     # Em orientação normal, avg_r deve ser menor que avg_g.
-    return avg_r > avg_g
+    return avg_g > avg_r
 
 def reversing_direction(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
 
