@@ -42,7 +42,7 @@ class RPLidarReader(LiDarInterface):
         :param point_timeout_ms: How long (in ms) a point can remain valid without an update.
         :param sensor_name: Name for logging.
         """
-
+        
         # Store parameters
         self.port = port
         self.baudrate = baudrate

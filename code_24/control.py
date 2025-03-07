@@ -47,9 +47,9 @@ def convolution_filter(distances):
 
     ## Corsi teste
     # percentuais = np.array([0.5236, 52.8796, 35.0785, 11.5183, 0.0])
-    percentuais = np.array([ 0.69444444,  5.55555556, 56.25      ,  5.55555556,  0.1        ])
+    percentuais = np.array([ 0.1,   5, 56      ,  5,  0.1        ])
 
-    percentuais = 1/percentuais
+    # percentuais = 1/percentuais
     
     pesos = percentuais / np.sum(percentuais) 
 
@@ -63,6 +63,7 @@ def convolution_filter(distances):
         kernel[inicio:inicio + tamanho] = pesos[i]
         inicio += tamanho
 
+    #kernel = np.ones(31)
     kernel /= np.sum(kernel)
 
     ## fim corsi teste
@@ -85,29 +86,31 @@ def compute_angle(filtred_distances, filtred_angles, raw_lidar):
     target_angle = filtred_angles[np.argmax(filtred_distances)]
     delta = 0
 
-    # l_angle = AVOID_CORNER_MAX_ANGLE
-    # r_angle = AVOID_CORNER_MAX_ANGLE
+    l_angle = 0
+    r_angle = 0
     
-    # for index in range(0, AVOID_CORNER_MAX_ANGLE):
-    #     l_dist = raw_lidar[(target_angle + index) % 360]
-    #     r_dist = raw_lidar[(target_angle - index) % 360]
+    for index in range(AVOID_CORNER_MAX_ANGLE, 0, -1):
+        l_dist = raw_lidar[(target_angle + index) % 360]
+        r_dist = raw_lidar[(target_angle - index) % 360]
 
-    #     if l_dist < AVOID_CORNER_MIN_DISTANCE:
-    #         l_angle = index
+        if l_angle == 0 and l_dist < AVOID_CORNER_MIN_DISTANCE:
+            l_angle = index
 
-    #     if r_dist < AVOID_CORNER_MIN_DISTANCE:
-    #         r_angle = index
-                
-    # print(f" l_dist: {l_dist} r_dist: {r_dist}")
+        if r_angle == 0 and r_dist < AVOID_CORNER_MIN_DISTANCE:
+            r_angle = index
 
-    # if l_angle > r_angle:
-    #     delta = -AVOID_CORNER_SCALE_FACTOR * (AVOID_CORNER_MAX_ANGLE - r_angle)
-    # else:
-    #     delta = +AVOID_CORNER_SCALE_FACTOR * (AVOID_CORNER_MAX_ANGLE - l_angle)
+    #print(f"l_dist: {l_dist} r_dist: {r_dist} {l_angle = } {r_angle = }")
 
-    # print("delta = ", delta)
+    if l_angle == r_angle:
+        delta = 0
+    elif l_angle > r_angle:
+        delta = -AVOID_CORNER_SCALE_FACTOR * (AVOID_CORNER_MAX_ANGLE - r_angle)
+    elif l_angle < r_angle:
+        delta = +AVOID_CORNER_SCALE_FACTOR * (AVOID_CORNER_MAX_ANGLE - l_angle)
+
+    print("delta = ", delta)
     
-    # target_angle += delta
+    target_angle += delta
     
     target_angle = (target_angle + 180) % 360 - 180
     

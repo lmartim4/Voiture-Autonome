@@ -24,7 +24,7 @@ def load_constants(new_filepath="config.json"):
     
     global STEERING_LIMIT, DC_STEER_MIN, DC_STEER_MAX, STEER_VARIATION_RATE, STEER_CENTER, STEER_FACTOR
     
-    global APERTURE_ANGLE, DC_SPEED_MIN, DC_SPEED_MAX, SPEED2DC_A, SPEED2DC_B
+    global TICKS_TO_METER, APERTURE_ANGLE, DC_SPEED_MIN, DC_SPEED_MAX, SPEED2DC_A, SPEED2DC_B
     global SPEED_FACTOR_DIST, SPEED_FACTOR_ANG, AGGRESSIVENESS
     
     global HITBOX_H1, HITBOX_H2, HITBOX_W
@@ -67,17 +67,21 @@ def load_constants(new_filepath="config.json"):
     STEER_CENTER = 0.5 * (DC_STEER_MAX + DC_STEER_MIN)
     STEER_FACTOR = np.array([
         [0.00, 0.000],
-        [5.0, 0.05],
-        [10.0, 0.20],
-        [15.0, 0.40],
-        [20.0, 0.70],
-        [25.0, 1.000]
+        [10.0, 0.167],
+        [20.0, 0.360],
+        [30.0, 0.680],
+        [40.0, 0.900],
+        [50.0, 1.000]
     ])
+    
     STEER_FACTOR[:, 1] *= STEERING_LIMIT
 
     #------------------------------------------------#
     #         Speed to PWM Parameters                #
     #------------------------------------------------#
+    
+    TICKS_TO_METER = int(get_config_value(cfg, "TICKS_TO_METER", 213)) #CONVERTS INTERRUPT SPEED TO M/S
+    
     APERTURE_ANGLE = int(get_config_value(cfg, "APERTURE_ANGLE", 20))
     DC_SPEED_MIN = float(get_config_value(cfg, "DC_SPEED_MIN", 7.6))
     DC_SPEED_MAX = float(get_config_value(cfg, "DC_SPEED_MAX", 8.2))
