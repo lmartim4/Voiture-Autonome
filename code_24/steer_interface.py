@@ -22,7 +22,7 @@ class RealSteerInterface(SteerInterface):
         self._pwm.start(7.5)
         self.logger.info("Steering PWM initialized and set to neutral (7.5%)")
 
-    def __del__(self):
+    def stop(self):
         self._pwm.stop()
     
     def set_steering_angle(self, angle: float):

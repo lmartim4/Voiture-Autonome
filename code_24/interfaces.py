@@ -43,11 +43,19 @@ class SteerInterface(ABC):
     def set_steering_angle(self, angle: float):
         """Sets the steering angle in degrees."""
         pass
+    
+    @abstractmethod
+    def stop():
+        pass
 
 class MotorInterface(ABC):
     @abstractmethod
     def set_speed(self, speed: float):
         """Sets the target speed of the vehicle (in m/s)"""
+        pass
+    
+    @abstractmethod
+    def stop():
         pass
 
 # -------------------------------------------------------------------------------

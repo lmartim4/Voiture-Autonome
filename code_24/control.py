@@ -23,8 +23,6 @@ def lerp(value: float, factor: np.ndarray) -> np.ndarray:
 def stop_command():
     return STEER_CENTER, DC_SPEED_MIN
 
-import numpy as np
-from scipy.signal import convolve
 
 def convolution_filter(distances):
     shift = FIELD_OF_VIEW_DEG // 2
@@ -47,7 +45,8 @@ def convolution_filter(distances):
 
     ## Corsi teste
     # percentuais = np.array([0.5236, 52.8796, 35.0785, 11.5183, 0.0])
-    percentuais = np.array([ 0.1,   5, 56      ,  5,  0.1        ])
+    percentuais = np.array([ 0.1,  1, 5, 20, 100, 1, 1, 1, 0.1])
+    # percentuais = np.array([ 0.1, 1, 5, 56, 5, 1, 1])
 
     # percentuais = 1/percentuais
     

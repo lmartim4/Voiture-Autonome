@@ -142,4 +142,4 @@ class VoitureAlgorithm:
         steer, steer_dc, target_angle = compute_steer_from_lidar(shrinked)
         
         self.steer.set_steering_angle(steer)
-        self.motor.set_speed(0)
+        self.motor.set_speed(2)
