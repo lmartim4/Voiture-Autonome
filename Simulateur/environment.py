@@ -24,6 +24,10 @@ class Environment:
         # Load metadata for starting position
         self.load_metadata(map_name)
 
+        # Format the map
+        self.format_map(map_name, max_size, padding_percent)
+        
+    def format_map(self, map_name, max_size, padding_percent):
         # Get original dimensions
         self.map_width, self.map_height = self.external_map.get_width(), self.external_map.get_height()
 
@@ -88,7 +92,7 @@ class Environment:
                     self.pointCloud.append(point)
     
     def show_sensor_data(self):
-        self.infomap = self.map.copy()
+        # self.infomap = self.map.copy()
 
         for point in self.pointCloud:
             self.infomap.set_at((int(point[0]), int(point[1])),params.red)
@@ -96,6 +100,15 @@ class Environment:
     def run(self):
         """Main loop to keep the window open."""
         running = True
+
+        # Criar uma nova tela com o dobro da largura para exibir os mapas lado a lado
+        width, height = self.map.get_width(), self.map.get_height()
+        combined_surface = pygame.display.set_mode((width * 2, height))
+
+
+        # Inicializar `infomap` como um mapa completamente preto
+        self.infomap.fill(params.black)  
+
         while running:
             sensorON = False
 
@@ -104,23 +117,24 @@ class Environment:
                     running = False
                 if pygame.mouse.get_focused():
                     sensorON = True
-                
-                # Precisa ?????????
                 elif not pygame.mouse.get_focused():
                     sensorON = False
-            
-            if sensorON: 
+
+            if sensorON:
                 position = pygame.mouse.get_pos()
                 self.lidar.position = position
                 sensor_data = self.lidar.sense_obstacles()
                 self.data_storage(sensor_data)
                 self.show_sensor_data()
-            
-            self.map.blit(self.infomap, (0,0))
-            pygame.display.update()
 
+            # **(CORREÇÃO) Desenhar o mapa original na esquerda**
+            combined_surface.blit(self.original_map, (0, 0))
+
+            # **(CORREÇÃO) Desenhar o infomap atualizado na direita**
+            combined_surface.blit(self.infomap, (width, 0))
+
+            # Atualizar a tela
+            pygame.display.flip()
 
         pygame.quit()
-
-
 
