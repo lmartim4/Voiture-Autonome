@@ -161,7 +161,8 @@ class Environment:
 
             if sensorON:
                 self.lidar.position = position
-                print(f"Posição: {position}, Ângulo: {np.rad2deg(angle_rad)}°")  # Para debug
+                self.lidar.angle_rad = angle_rad
+                # print(f"Posição: {position}, Ângulo: {np.rad2deg(angle_rad)}°")  # Para debug
                 sensor_data = self.lidar.sense_obstacles()
                 self.data_storage(sensor_data)
                 self.show_sensor_data()

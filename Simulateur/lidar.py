@@ -58,8 +58,10 @@ class Lidar:
         x_global, y_global = self.position[0], self.position[1]
 
         # linspace from 0 to 2pi, taking 60 samples, not inclusing (False) the endpoint
-        for angle in np.linspace(0, 2*np.pi,60, False):
-            x_scan, y_scan = (x_global + self.max_range * np.cos(angle), y_global - self.max_range * np.sin(angle) )
+        for angle in np.linspace(-np.pi/2, np.pi/2,60, True):
+            angle_scan = self.angle_rad + angle
+            x_scan, y_scan = (x_global + self.max_range * np.cos(angle_scan),
+                               y_global - self.max_range * np.sin(angle_scan) )
 
             interpolation_range = 100
             for i in range(0,interpolation_range): 
@@ -73,7 +75,7 @@ class Lidar:
                     # TODO : Fazer as cores serem globais
                     if (color[0],color[1],color[2]) == params.black:
                         distance = self.distance((x,y))
-                        output = self.uncertainty_add(distance, angle)
+                        output = self.uncertainty_add(distance, angle_scan)
                         output.append(self.position)
                         
                         data.append(output)
