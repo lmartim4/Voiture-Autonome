@@ -7,3 +7,4 @@ pyperclip==1.8.2
 pyserial==3.5
 rplidar-roboticia==0.9.5
 scipy==1.10.1
+seaborn==0.13.2
