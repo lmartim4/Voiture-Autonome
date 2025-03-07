@@ -34,24 +34,29 @@ def draw_start_finish_line(img, x, y, thickness=5):
     Draws a red start/finish line at the closest track edge and returns the midpoint.
     """
     global start_line_coords
+    global start_line_orientation 
 
     up, down, left, right, v_dist, h_dist = find_nearest_track_edges(img, x, y)
     img_colored = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    orientation_vertical = None 
 
     if v_dist < h_dist:
         # Draw vertical line
         cv2.line(img_colored, (x, up), (x, down), (0, 0, 255), thickness)
         midpoint = (x, (up + down) // 2)
+        orientation = False 
     else:
         # Draw horizontal line
         cv2.line(img_colored, (left, y), (right, y), (0, 0, 255), thickness)
         midpoint = ((left + right) // 2, y)
+        orientation = True 
 
     start_line_coords = midpoint  # Save the midpoint
+    start_line_orientation = orientation # Save the orientation 
     return img_colored
 
 
-def save_metadata(filepath, midpoint):
+def save_metadata(filepath, midpoint, vertical_orientation):
     """
     Saves the midpoint of the start/finish line in a metadata file.
     """
@@ -59,7 +64,7 @@ def save_metadata(filepath, midpoint):
     metadata_filename = f"{base_name}_metadata.txt"
 
     with open(metadata_filename, "w") as f:
-        f.write(f"start_line: {midpoint[0]},{midpoint[1]}\n")
+        f.write(f"start_line: {midpoint[0]},{midpoint[1]},{vertical_orientation}\n")
     print(f"Metadata saved to {metadata_filename}")
 
 
@@ -86,8 +91,8 @@ def on_keypress(key):
     - 's' saves the metadata
     - 'ESC' or window close exits the program
     """
-    if key == ord('s') and start_line_coords is not None:
-        save_metadata(track_path, start_line_coords)
+    if key == ord('s') and start_line_coords is not None and start_line_orientation is not None:
+        save_metadata(track_path, start_line_coords, start_line_orientation)
 
 
 if __name__ == "__main__":

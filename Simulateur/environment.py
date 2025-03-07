@@ -1,6 +1,7 @@
 import pygame
 import numpy as np
 import params
+import os 
 
 class Environment:
     
@@ -19,6 +20,9 @@ class Environment:
 
         # Load external map
         self.external_map = pygame.image.load(f'tracks/{map_name}')
+        
+        # Load metadata for starting position
+        self.load_metadata(map_name)
 
         # Get original dimensions
         self.map_width, self.map_height = self.external_map.get_width(), self.external_map.get_height()
@@ -50,6 +54,25 @@ class Environment:
         # Scale the image and draw it on the screen
         self.external_map = pygame.transform.scale(self.external_map, (new_width, new_height))
         self.map.blit(self.external_map, (x_offset, y_offset))
+
+    def load_metadata(self, map_name):
+        """Loads the start position from the metadata file."""
+        metadata_path = os.path.join("tracks", f"{map_name.split('.')[0]}_metadata.txt")
+        self.start_x, self.start_y, self.start_orientation = None, None, None
+        
+        if os.path.exists(metadata_path):
+            with open(metadata_path, "r") as file:
+                for line in file:
+                    if line.startswith("start_line"):
+                        _, coords = line.strip().split(": ")
+                        self.start_x, self.start_y, self.start_orientation = coords.split(",")
+                        self.start_x, self.start_y = int(self.start_x), int(self.start_y) 
+                        if self.start_orientation:
+                            self.start_orientation = 0
+                        else:
+                            self.start_orientation = 90
+                        break
+        print(f"Loaded start position: ({self.start_x}, {self.start_y}, {self.start_orientation})")
 
     def polar2cartesian(self, distance, angle, position):
         x = int(distance * np.cos(angle) + position[0])
@@ -98,3 +121,6 @@ class Environment:
 
 
         pygame.quit()
+
+
+
