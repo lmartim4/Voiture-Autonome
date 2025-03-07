@@ -5,7 +5,7 @@ import os
 
 class Environment:
     
-    def __init__(self, map_name, max_size=800, padding_percent=0.05):
+    def __init__(self, map_name, speed_ms =2.5, rotation_speed_deg=3, max_size=800, padding_percent=0.05):
         """
         Initializes the simulation environment.
 
@@ -14,6 +14,8 @@ class Environment:
         :param padding_percent: float, Percentage of the max_size to be used as padding.
         """
         pygame.init()
+        self.speed = speed_ms  # Velocidade de movimento
+        self.rotation_speed = np.deg2rad(rotation_speed_deg)  # Velocidade de rotação (graus)
 
         # Point cloud data to be draw
         self.pointCloud = []
@@ -43,6 +45,9 @@ class Environment:
         # Compute final window dimensions including padding
         final_width = new_width + 2 * padding
         final_height = new_height + 2 * padding
+        
+        self.start_x = int(self.start_x * scale_factor + padding)
+        self.start_y = int(self.start_y * scale_factor + padding)
 
         # Create window
         pygame.display.set_caption(f"Simulation - Map: {map_name}")
@@ -105,36 +110,99 @@ class Environment:
         width, height = self.map.get_width(), self.map.get_height()
         combined_surface = pygame.display.set_mode((width * 2, height))
 
-
         # Inicializar `infomap` como um mapa completamente preto
         self.infomap.fill(params.black)  
 
+        position = [self.start_x, self.start_y]
+        angle_rad = np.deg2rad(self.start_orientation)
+
         while running:
-            sensorON = False
+            sensorON = True
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-                if pygame.mouse.get_focused():
-                    sensorON = True
-                elif not pygame.mouse.get_focused():
-                    sensorON = False
+
+            # Capturar teclas pressionadas
+            keys = pygame.key.get_pressed()
+
+            # Definir um novo ponto de posição temporário
+            new_x, new_y = position[0], position[1]
+
+            angle_cmd = True
+            if keys[pygame.K_a]:  # Rotaciona para esquerda
+                angle_rad += self.rotation_speed  # Converter para radianos
+            elif keys[pygame.K_d]:  # Rotaciona para direita
+                angle_rad -= self.rotation_speed
+            else:
+                angle_cmd = False
+
+            speed_cmd = True
+            # Movimento para frente (W) e para trás (S)
+            if keys[pygame.K_w]:  # Avança
+                new_x = int(position[0] + np.cos(angle_rad) * self.speed)
+                new_y = int(position[1] - np.sin(angle_rad) * self.speed)
+
+            elif keys[pygame.K_s]:  # Recuar
+                new_x = int(position[0] - np.cos(angle_rad) * self.speed)
+                new_y = int(position[1] + np.sin(angle_rad) * self.speed)
+            else:
+                speed_cmd = False
+            
+
+            sensorON = speed_cmd or angle_cmd 
+
+            # **Impedir valores negativos (manter dentro dos limites da tela)**
+            new_x = max(0, min(new_x, width - 1))
+            new_y = max(0, min(new_y, height - 1))
+
+            # Atualizar `position`
+            position = [new_x, new_y]
 
             if sensorON:
-                position = pygame.mouse.get_pos()
                 self.lidar.position = position
+                print(f"Posição: {position}, Ângulo: {np.rad2deg(angle_rad)}°")  # Para debug
                 sensor_data = self.lidar.sense_obstacles()
                 self.data_storage(sensor_data)
                 self.show_sensor_data()
 
-            # **(CORREÇÃO) Desenhar o mapa original na esquerda**
-            combined_surface.blit(self.original_map, (0, 0))
+            # Criar cópia do mapa original para desenhar o carro
+            original_with_car = self.original_map.copy()
+            self.draw_arrow(original_with_car, position, angle_rad, size=8, color=params.red)
 
-            # **(CORREÇÃO) Desenhar o infomap atualizado na direita**
+
+            # **Desenhar o mapa original na esquerda**
+            combined_surface.blit(original_with_car, (0, 0))
+
+            # **Desenhar o infomap atualizado na direita**
             combined_surface.blit(self.infomap, (width, 0))
 
             # Atualizar a tela
             pygame.display.flip()
 
         pygame.quit()
+    
+    def draw_arrow(self,surface, position, angle, size=10, color=params.red):
+        """
+        Desenha uma seta na posição e orientação especificadas.
+
+        :param surface: pygame.Surface - Superfície onde desenhar a seta.
+        :param position: tuple - (x, y) Posição central da seta.
+        :param angle: float - Ângulo de rotação da seta em radianos.
+        :param size: int - Tamanho da seta.
+        :param color: tuple - Cor da seta (RGB).
+        """
+        x, y = position
+        cos_a, sin_a = np.cos(angle), np.sin(angle)
+
+        # Ponto da frente da seta
+        tip = (x + 1.5*size * cos_a, y - 1.5*size * sin_a)
+
+        # Pontos traseiros da seta (esquerda e direita)
+        left = (x - 0.5*size * cos_a + 0.5*size * sin_a, y + 0.5*size * sin_a + 0.5*size * cos_a)
+        right = (x - 0.5*size * cos_a - 0.5*size * sin_a, y + 0.5*size * sin_a - 0.5*size * cos_a)
+
+        # Desenhar um triângulo representando a seta
+        pygame.draw.polygon(surface, color, [tip, left, right])
+
 

@@ -6,7 +6,7 @@ import params
 
 # To understand the implementation : https://www.youtube.com/watch?v=JbUNsYPJK1U
 
-environment = Environment("track2.png")
+environment = Environment("track1.png")
 environment.original_map = environment.map.copy()
 lidar = Lidar(200, 4, environment.original_map, uncertainty=(0.5,0.01)) 
 environment.lidar = lidar
