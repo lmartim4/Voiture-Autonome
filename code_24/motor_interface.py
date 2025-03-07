@@ -20,7 +20,7 @@ class RealMotorInterface(MotorInterface):
         self._pwm = PWM(channel=channel, frequency=frequency)
         
         # Start the ESC at neutral
-        self._pwm.start(7.5)
+        self._pwm.start(DC_SPEED_MIN)
         self.logger.info("Motor PWM initialized and set to neutral (7.5%)")
 
     def stop(self):
@@ -40,5 +40,5 @@ class RealMotorInterface(MotorInterface):
 
         duty_cycle = (speed - min_speed) / (max_speed - min_speed) * (max_dc - min_dc) + min_dc
         
-        self._pwm.set_duty_cycle(8.2)
+        self._pwm.set_duty_cycle(8.1)
         self.logger.debug(f"Speed set to {speed} m/s => duty cycle: {duty_cycle}%")

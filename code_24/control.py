@@ -44,11 +44,8 @@ def convolution_filter(distances):
 
 
     ## Corsi teste
-    # percentuais = np.array([0.5236, 52.8796, 35.0785, 11.5183, 0.0])
-    percentuais = np.array([ 0.1,  1, 5, 20, 100, 1, 1, 1, 0.1])
-    # percentuais = np.array([ 0.1, 1, 5, 56, 5, 1, 1])
-
-    # percentuais = 1/percentuais
+    # percentuais = np.array([ 0.1, 56, 56, 56, 0.1])
+    percentuais = np.array([ 36, 5, 36, 56, 36, 5, 36])
     
     pesos = percentuais / np.sum(percentuais) 
 

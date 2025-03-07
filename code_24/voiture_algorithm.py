@@ -1,3 +1,4 @@
+import time
 import numpy as np
 from interfaces import LiDarInterface, UltrasonicInterface, SpeedInterface, BatteryInterface, CameraInterface, SteerInterface, MotorInterface, ConsoleInterface
 from constants import HITBOX_H1, HITBOX_H2, HITBOX_W
@@ -124,7 +125,9 @@ class VoitureAlgorithm:
         self.console = console
     
     def run_step(self):
-        """Runs a single step of the algorithm."""
+        """Runs a single step of the algorithm and measures execution time."""
+        
+        start_time = time.time()  # Start timing
         
         lidar_data = self.lidar.get_lidar_data()
         ultrasonic_data = self.ultrasonic.get_ultrasonic_data()
@@ -133,13 +136,15 @@ class VoitureAlgorithm:
         
         #camera_frame = self.camera.get_camera_frame()
 
-        self.console.print_to_console(f"Lidar: {lidar_data[:10]}")
-        self.console.print_to_console(f"Ultrasonic: {ultrasonic_data}")
-        self.console.print_to_console(f"Speed: {current_speed:.2f} m/s")
-        self.console.print_to_console(f"Battery: {battery_level}V")        
         
         shrinked = shrink_space(lidar_data)
         steer, steer_dc, target_angle = compute_steer_from_lidar(shrinked)
-        
+
         self.steer.set_steering_angle(steer)
         self.motor.set_speed(2)
+
+        end_time = time.time()  # End timing
+        loop_time = end_time - start_time  # Calculate elapsed time
+        loop_time *= 1000000
+
+        self.console.print_to_console(f"Ultrasonic: {ultrasonic_data} Speed: {current_speed:.2f} m/s Battery: {battery_level}V Loop Time: {loop_time:.4f} us")        
