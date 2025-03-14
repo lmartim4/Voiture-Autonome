@@ -3,8 +3,7 @@ import numpy as np
 from scipy.signal import convolve
 from typing import Any, Dict, Tuple
 from constants import *
-
-from camera import Camera 
+from interfaces import Camera
 
 reverse_running = False
 reverse_counter = 0
@@ -414,6 +413,9 @@ def check_reversed_camera(camera: Camera) -> bool:
     """
     avg_r, avg_g, count_r, count_g = camera.process_stream()
 
+    if avg_r < 0 or avg_g < 0:
+        return False
+
     # Em orientação normal, avg_r deve ser menor que avg_g.
     return avg_r > avg_g
 
@@ -429,10 +431,10 @@ def reversing_direction(interface: Dict[str, Any], data: Dict[str, Any]) -> None
     avg_right = np.mean(r_side[r_side > 0])
                 
     if avg_left > avg_right:
-        console.info("Espace libre à gauche, rotation vers la gauche...")
+        print("Espace libre à gauche, rotation vers la gauche...")
         correction_steer_pwm = STEER2PWM_B + (STEERING_LIMIT * STEER2PWM_A)
     else:
-        console.info("Espace libre à droite, rotation vers la droite...")
+        print("Espace libre à droite, rotation vers la droite...")
         correction_steer_pwm = STEER2PWM_B - (STEERING_LIMIT * STEER2PWM_A)
 
     # Aplicando os ajustes de direção
@@ -442,7 +444,7 @@ def reversing_direction(interface: Dict[str, Any], data: Dict[str, Any]) -> None
     interface["speed"].set_duty_cycle(PWM_REVERSE)
 
     # Pequena pausa para a correção
-    time.sleep(0.5)
+    time.sleep(2)
 
     # Após a correção, recalculamos o steer e speed
     steer, steer_pwm = compute_steer(data)
@@ -453,6 +455,7 @@ def reversing_direction(interface: Dict[str, Any], data: Dict[str, Any]) -> None
     interface["speed"].set_duty_cycle(speed_pwm)
 
 
+"ainda vou arrumar"
 def reverse_with_camera(interface: Dict[str, Any], camera: Camera) -> None:
     """
     Performs the reverse maneuver based on the camera data.

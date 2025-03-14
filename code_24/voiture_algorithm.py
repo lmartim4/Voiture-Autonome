@@ -2,7 +2,7 @@ import time
 import numpy as np
 from interfaces import LiDarInterface, UltrasonicInterface, SpeedInterface, BatteryInterface, CameraInterface, SteerInterface, MotorInterface, ConsoleInterface
 from constants import HITBOX_H1, HITBOX_H2, HITBOX_W
-from control import compute_steer_from_lidar
+from control import compute_steer_from_lidar, check_reversed_camera, reversing_direction
 
 def calculate_hitbox_polar(w, h1, h2):
     """
@@ -141,9 +141,13 @@ class VoitureAlgorithm:
         
         #camera_frame = self.camera.get_camera_frame()
 
-        avg_r, avg_g, count_r, count_g = self.camera.process_stream()
-        if check_reversed_camera(camera)
+        if check_reversed_camera(self.camera):
             self.console.print_to_console("Inversion d'orientation détectée !")
+            reversing_direction(
+            {"steer": self.steer, "speed": self.motor},  # Interface
+            {"lidar": lidar_data}  # Dados do LiDAR
+            )
+            return
 
         
         shrinked = shrink_space(lidar_data)

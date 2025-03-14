@@ -40,7 +40,7 @@ def main():
                         ultrasonic=ultra_interface,
                         speed=speed_interface,
                         battery=battery_interface, 
-                        camera=interfaces.MockCameraInterface(),
+                        camera=camera_interface,
                         steer=steer_interface,
                         motor=motor_interface,
                         console=interfaces.MockConsoleInterface())

@@ -134,7 +134,7 @@ def load_constants(new_filepath="config.json"):
     MIN_POINTS_TO_TRIGGER = int(get_config_value(cfg, "MIN_POINTS_TO_TRIGGER", 8))
     REVERSE_CHECK_COUNTER = int(get_config_value(cfg, "REVERSE_CHECK_COUNTER", 8))
     LERP_MAP_LENGTH[:, 1] = MIN_LENGTH + (MAX_LENGTH - MIN_LENGTH) * LERP_MAP_LENGTH[:, 1]
-    PWM_REVERSE = 6.3
+    PWM_REVERSE = 7.0
     STEERING_LIMIT_IN_REVERSE = STEERING_LIMIT
 
 load_constants()
