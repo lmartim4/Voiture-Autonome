@@ -40,5 +40,5 @@ class RealMotorInterface(MotorInterface):
 
         duty_cycle = (speed - min_speed) / (max_speed - min_speed) * (max_dc - min_dc) + min_dc
         
-        self._pwm.set_duty_cycle(8.1)
+        self._pwm.set_duty_cycle(8.0)
         self.logger.debug(f"Speed set to {speed} m/s => duty cycle: {duty_cycle}%")

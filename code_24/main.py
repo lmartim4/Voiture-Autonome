@@ -33,6 +33,7 @@ def main():
         speed_interface = SharedMemSpeedInterface()
         ultra_interface = SharedMemUltrasonicInterface()
         battery_interface = SharedMemBatteryInterface()
+        camera_interface = interfaces.RealCamera()
         
         algorithm = VoitureAlgorithm(
                         lidar=lidar_reader,

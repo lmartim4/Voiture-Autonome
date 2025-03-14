@@ -1,4 +1,6 @@
 import numpy as np
+import cv2
+from picamera2 import Picamera2
 from abc import ABC, abstractmethod
 from typing import List, Tuple
 
@@ -31,9 +33,63 @@ class BatteryInterface(ABC):
 
 class CameraInterface(ABC):
     @abstractmethod
-    def get_camera_frame(self):
-        """Returns the latest camera frame."""
+    def get_camera_frame(self) -> np.ndarray:
+        """Returns the latest camera frame as a NumPy array."""
         pass
+
+# -------------------------------------------------------------------------------
+# Camera Interface
+# -------------------------------------------------------------------------------
+class RealCamera(CameraInterface):
+    def __init__(self, width=640, height=480):
+        self.picam2 = Picamera2()
+        config = self.picam2.create_preview_configuration(
+            main={"size": (width, height)},
+            lores={"size": (width, height)}
+        )
+        self.picam2.configure(config)
+
+        try:
+            self.picam2.start()
+            print("Initialisation réussie de la caméra")
+        except Exception as e:
+            print(f"Erreur d'initialisation de la caméra: {e}")
+            raise
+
+        self.width = width
+        self.height = height
+
+    def get_camera_frame(self) -> np.ndarray:
+        frame = self.picam2.capture_array()
+        if frame is None:
+            print("Le cadre de la caméra n'a pas pu être capturé")
+            return None
+        return frame
+
+    def process_stream(self):
+        frame = self.get_camera_frame()
+        if frame is None:
+            return None, None, 0, 0
+
+        frame_hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
+
+        # Faixas de cor para detecção
+        red_lower, red_upper = np.array([0, 150, 150]), np.array([10, 255, 255])
+        green_lower, green_upper = np.array([50, 100, 100]), np.array([70, 255, 255])
+
+        mask_r = cv2.inRange(frame_hsv, red_lower, red_upper)
+        mask_g = cv2.inRange(frame_hsv, green_lower, green_upper)
+
+        stack_r = np.column_stack(np.where(mask_r > 0))
+        avg_r = np.mean(stack_r[:, 1]) if stack_r.size > 0 else -1
+
+        stack_g = np.column_stack(np.where(mask_g > 0))
+        avg_g = np.mean(stack_g[:, 1]) if stack_g.size > 0 else -1
+
+        count_r = np.count_nonzero(mask_r) / (self.width * self.height)
+        count_g = np.count_nonzero(mask_g) / (self.width * self.height)
+
+        return avg_r, avg_g, count_r, count_g
 
 # -------------------------------------------------------------------------------
 # Output Interfaces (same as before)

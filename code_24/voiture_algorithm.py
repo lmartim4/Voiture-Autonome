@@ -133,8 +133,17 @@ class VoitureAlgorithm:
         ultrasonic_data = self.ultrasonic.get_ultrasonic_data()
         current_speed = self.speed.get_speed()
         battery_level = self.battery.get_battery_voltage()
+
+        self.console.print_to_console(f"Lidar: {lidar_data[:10]}")
+        self.console.print_to_console(f"Ultrasonic: {ultrasonic_data}")
+        self.console.print_to_console(f"Speed: {current_speed:.2f} m/s")
+        self.console.print_to_console(f"Battery: {battery_level}V")   
         
         #camera_frame = self.camera.get_camera_frame()
+
+        avg_r, avg_g, count_r, count_g = self.camera.process_stream()
+        if check_reversed_camera(camera)
+            self.console.print_to_console("Inversion d'orientation détectée !")
 
         
         shrinked = shrink_space(lidar_data)

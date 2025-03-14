@@ -4,6 +4,8 @@ from scipy.signal import convolve
 from typing import Any, Dict, Tuple
 from constants import *
 
+from camera import Camera 
+
 reverse_running = False
 reverse_counter = 0
 
@@ -390,3 +392,128 @@ def get_raw_readings_from_top_right_corner(raw_distances, right):
 
     return new_d_linha
     
+def check_reversed_camera(camera: Camera) -> bool:
+    """
+      Checks if the trolley is upside down (turned 180° in relation to the track)
+    using the camera data.
+
+    The function calls camera.process_stream() to get:
+      - avg_r: average position of the red pixels (left wall in normal orientation)
+      - avg_g: average position of green pixels (right wall in normal orientation)
+
+    In a normal orientation, avg_r < avg_g is expected. If avg_r > avg_g,
+    the image shows that the red wall is on the right and the green wall is on the left,
+    i.e. the trolley is upside down.
+
+    Args:
+        camera (Camera): Instance of the Camera class.
+
+    Returns:
+        bool: True if the trolley is upside down, False otherwise.
+
+    """
+    avg_r, avg_g, count_r, count_g = camera.process_stream()
+
+    # Em orientação normal, avg_r deve ser menor que avg_g.
+    return avg_r > avg_g
+
+
+def reversing_direction(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
+
+    # Analisando os dados do LiDAR para encontrar a melhor direção de rotação
+    distances = data["lidar"]
+    l_side = distances[60:120]   # Região à esquerda do carrinho
+    r_side = distances[240:300]  # Região à direita do carrinho
+                
+    avg_left = np.mean(l_side[l_side > 0])
+    avg_right = np.mean(r_side[r_side > 0])
+                
+    if avg_left > avg_right:
+        console.info("Espace libre à gauche, rotation vers la gauche...")
+        correction_steer_pwm = STEER2PWM_B + (STEERING_LIMIT * STEER2PWM_A)
+    else:
+        console.info("Espace libre à droite, rotation vers la droite...")
+        correction_steer_pwm = STEER2PWM_B - (STEERING_LIMIT * STEER2PWM_A)
+
+    # Aplicando os ajustes de direção
+    interface["steer"].set_duty_cycle(correction_steer_pwm)
+
+    # Reduzindo a velocidade para uma correção segura
+    interface["speed"].set_duty_cycle(PWM_REVERSE)
+
+    # Pequena pausa para a correção
+    time.sleep(0.5)
+
+    # Após a correção, recalculamos o steer e speed
+    steer, steer_pwm = compute_steer(data)
+    speed, speed_pwm = compute_speed(data, steer)
+
+    # Aplicar os novos valores após a correção
+    interface["steer"].set_duty_cycle(steer_pwm)
+    interface["speed"].set_duty_cycle(speed_pwm)
+
+
+def reverse_with_camera(interface: Dict[str, Any], camera: Camera) -> None:
+    """
+    Performs the reverse maneuver based on the camera data.
+
+    The idea is that the red dots (left wall) and green dots (right wall)
+    indicate the space available. If the space is small, the reverse should be slower and,
+    if one side is freer than the other, the trolley's direction will be adjusted.
+
+    Args:
+        interface (Dict[str, Any]): Dictionary containing the trolley's components.
+        camera (Camera): Camera instance for analyzing the environment.
+    """
+    global last_reverse
+
+    interface["lidar"].stop()  # Para leituras inconsistentes do LiDAR durante a manobra
+
+    console.info("Manœuvre de recul basée sur la caméra...")
+    
+    avg_r, avg_g, count_r, count_g = camera.process_stream()
+
+    # If there isn't enough information, make a cautious U-turn
+    if avg_r < 0 or avg_g < 0:
+        console.info("Ré prudent - peu d'informations de la part de la caméra")
+        steer_pwm = STEER2PWM_B  # Neutral direction
+        speed_pwm = PWM_REVERSE * 0.7  # Slower reverse
+    else:
+        # Calculate space between detected walls
+        gap = avg_g - avg_r
+
+        # If the space is too small, reduce the speed
+        if gap < 100:  
+            console.info("Espace restreint - marche arrière plus lente")
+            speed_pwm = PWM_REVERSE * 0.6  # Slow reverse
+        else:
+            speed_pwm = PWM_REVERSE  # Normal reverse
+
+        # Decide on direction based on available space
+        if avg_r > avg_g:
+            console.info("Espace plus grand à gauche - tourner à gauche en marche arrière")
+            steer_pwm = STEER2PWM_B + (STEERING_LIMIT * STEER2PWM_A)  
+        else:
+            console.info("Espace plus grand à droite - tourner à droite en marche arrière")
+            steer_pwm = STEER2PWM_B - (STEERING_LIMIT * STEER2PWM_A) 
+        
+        speed_pwm = PWM_REVERSE  # Normal speed for reverse
+
+    # Small speed adjustments to avoid jerks
+    interface["speed"].set_duty_cycle(7.0)
+    time.sleep(0.03)
+    interface["speed"].set_duty_cycle(7.5)
+    time.sleep(0.03)
+
+    # Perform the reverse maneuver for a short time to avoid long adjustments
+    interface["steer"].set_duty_cycle(steer_pwm)
+    interface["speed"].set_duty_cycle(speed_pwm)
+
+    time.sleep(1.0)  # Time setting for the maneuver
+
+    # Returns to normal control
+    interface["speed"].set_duty_cycle(7.5)  # Stop the reverse movement
+    interface["lidar"].start()  # Reactivate LiDAR for new readings
+
+    last_reverse = time.time()
+    console.info("Ré terminée, retour au contrôle normal")
