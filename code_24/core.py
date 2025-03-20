@@ -1,7 +1,7 @@
 import os
 import serial
 from typing import List
-import central_logger
+import voiture_logger
 
 RPI5 = True
 CHIP_PATH = f"/sys/class/pwm/pwmchip{2 if RPI5 else 0}"
@@ -15,7 +15,7 @@ class PWM:
             channel (int): PWM channel number (0 or 1).
             frequency (float): frequency of the PWM signal in Hz.
         """
-        self.logger = central_logger.CentralLogger(sensor_name="PWM").get_logger()
+        self.logger = voiture_logger.CentralLogger(sensor_name="PWM").get_logger()
         self.pwm_dir = f"{CHIP_PATH}/pwm{channel}"
 
         if not os.path.isdir(self.pwm_dir):
@@ -89,7 +89,7 @@ class Serial:
             baudrate (int): baudrate of the serial communication.
             timeout (float): timeout value in seconds.
         """
-        self.logger = central_logger.CentralLogger(sensor_name="Serial").get_logger()   
+        self.logger = voiture_logger.CentralLogger(sensor_name="Serial").get_logger()   
         try:
             self.serial = serial.Serial(port, baudrate, timeout=timeout)
             self.logger.info(f"Serial connection established on port {port} at {baudrate} baud")

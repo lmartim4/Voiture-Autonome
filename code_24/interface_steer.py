@@ -1,7 +1,7 @@
 from control import compute_pwm
 from interfaces import SteerInterface
 from core import PWM
-import central_logger
+import voiture_logger
 
 class RealSteerInterface(SteerInterface):
     """
@@ -14,11 +14,10 @@ class RealSteerInterface(SteerInterface):
             channel (int): PWM channel controlling the steering servo (typically 1).
             frequency (float): Servo PWM frequency, typically 50 Hz.
         """
-        self.logger = central_logger.CentralLogger(sensor_name="RealSteer").get_logger()
+        self.logger = voiture_logger.CentralLogger(sensor_name="RealSteer").get_logger()
         self._pwm = PWM(channel=channel, frequency=frequency)
         
         # Start the servo at neutral (7.5% duty cycle).
-        # Adjust if your servo's "neutral" duty cycle is different.
         self._pwm.start(7.5)
         self.logger.info("Steering PWM initialized and set to neutral (7.5%)")
 
@@ -39,6 +38,5 @@ class RealSteerInterface(SteerInterface):
         
         duty_cycle = compute_pwm(angle)
                 
-        # Send it to the PWM hardware
         self._pwm.set_duty_cycle(duty_cycle)
         self.logger.debug(f"Steering angle set to {angle}° => duty cycle: {duty_cycle}%")

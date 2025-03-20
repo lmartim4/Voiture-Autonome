@@ -3,7 +3,7 @@ import numpy as np
 from scipy.signal import convolve
 from typing import Any, Dict, Tuple
 from constants import *
-from interfaces import Camera
+from interfaces import CameraInterface
 
 reverse_running = False
 reverse_counter = 0
@@ -105,7 +105,7 @@ def compute_angle(filtred_distances, filtred_angles, raw_lidar):
     elif l_angle < r_angle:
         delta = +AVOID_CORNER_SCALE_FACTOR * (AVOID_CORNER_MAX_ANGLE - l_angle)
 
-    print("delta = ", delta)
+    #print("delta = ", delta)
     
     target_angle += delta
     
@@ -148,18 +148,6 @@ def check_reverse(distances):
     
     return False
 
-def set_esc_on_reverse(speed_interface):
-    speed_interface.set_duty_cycle(7.0)
-    time.sleep(0.03)
-    speed_interface.set_duty_cycle(7.5)
-    time.sleep(0.03)
-    
-def activate_reverse(speed_interface):
-    set_esc_on_reverse(speed_interface)
-    speed_interface.set_duty_cycle(PWM_REVERSE)
-
-def deactivate_reverse(speed_interface):
-    speed_interface.set_duty_cycle(DC_SPEED_MIN)
     
 def reverse(interface: Dict[str, Any], raw_lidar):
     global reverse_running
@@ -169,7 +157,6 @@ def reverse(interface: Dict[str, Any], raw_lidar):
         return
     
     reverse_running = True
-    activate_reverse(interface["speed"])
 
     distances = raw_lidar
     indices = np.arange(-5, 6, dtype=int) + 70
@@ -186,8 +173,6 @@ def reverse(interface: Dict[str, Any], raw_lidar):
 
     for _ in range(20):
         time.sleep(0.1)
-
-    deactivate_reverse(interface["speed"])
     
     interface["speed"].set_duty_cycle(7.5)
     
@@ -217,7 +202,6 @@ def calculate_hitbox_polar(w, h1, h2):
     """
     print("CALCULATING HITBOX")
     
-    # Angles from -pi to pi in 360 increments
     rad_raw_angles = np.linspace(0, 2*np.pi, num=360, endpoint=False)
     
     polar_coords = []
@@ -227,12 +211,6 @@ def calculate_hitbox_polar(w, h1, h2):
         c = np.cos(theta)
         s = np.sin(theta)
         
-        # We use t >= 0 in the parametric form:
-        #   X(t) = t*cos(theta)
-        #   Y(t) = t*sin(theta)
-        #
-        # We'll collect all valid positive 't' that hits the rectangle
-        # boundary, then take the smallest positive.
         candidates = []
         
         # 1) Intersection with the vertical sides x = +/- w (if cos(theta) != 0)
@@ -290,68 +268,6 @@ def shrink_space(raw_lidar):
     
     return shrink_space_lidar
 
-def estimate_lidar_velocity(old_scan, new_scan, angles_deg, dt):
-    #Will be used to compare the estimate from control in multiplot.
-    """
-    Estimate the ego-vehicle velocity (vx, vy) in the LiDAR's reference frame
-    from two consecutive LiDAR scans 'old_scan' and 'new_scan'.
-
-    - old_scan and new_scan: 1D arrays of size 360 (distance in meters).
-    - angles_deg: array of 360 angles in degrees [0..359].
-    - dt: time in seconds between the two scans.
-
-    Returns: (vx, vy) in meters/second, where +x is forward and +y is left
-             (assuming a standard robotics convention of 0 deg = +x axis,
-             90 deg = +y axis, etc.)
-    """
-    if dt <= 1e-9:
-        raise ValueError("dt must be > 0 to compute velocity")
-
-    # Convert degrees to radians
-    angles_rad = np.deg2rad(angles_deg)
-
-    # Convert old scan to Cartesian
-    x_old = old_scan * np.cos(angles_rad)
-    y_old = old_scan * np.sin(angles_rad)
-
-    # Convert new scan to Cartesian
-    x_new = new_scan * np.cos(angles_rad)
-    y_new = new_scan * np.sin(angles_rad)
-
-    # We want to find the difference old->new. If the environment is static,
-    # the shift from (x_old, y_old) to (x_new, y_new) is effectively
-    # -1 times the ego-vehicle motion in the LiDAR frame.
-
-    # Let dx_i = x_new[i] - x_old[i]
-    # Then if dx_i is consistent across all i, that shift is your motion.
-    # But we can have outliers, zero distances, etc. We'll do a simple approach:
-    #  - Consider only angles where both scans have > 0.1m
-    #  - Then average the differences
-
-    valid_mask = (old_scan > 0.1) & (new_scan > 0.1)
-    dx = x_new[valid_mask] - x_old[valid_mask]
-    dy = y_new[valid_mask] - y_old[valid_mask]
-
-    if len(dx) < 10:
-        # Not enough valid points
-        return (0.0, 0.0)
-
-    avg_dx = np.median(dx)  # You can also use np.mean(dx)
-    avg_dy = np.median(dy)
-
-    # This is the displacement of the points from old->new.
-    # Ego motion is the negative of that (since if the environment is static,
-    # the environment points appear to shift in the opposite direction of the
-    # robot's actual motion).
-    ego_dx = -avg_dx
-    ego_dy = -avg_dy
-
-    # Velocity = displacement / dt
-    vx = ego_dx / dt
-    vy = ego_dy / dt
-
-    return vx, vy
-
 def get_raw_readings_from_top_right_corner(raw_distances, right):
     # 360 angles from 0 to 2π (exclusive)
     rad_raw_angles = np.linspace(0, 2*np.pi, num=360, endpoint=False)
@@ -391,7 +307,7 @@ def get_raw_readings_from_top_right_corner(raw_distances, right):
 
     return new_d_linha
     
-def check_reversed_camera(camera: Camera) -> bool:
+def check_reversed_camera(camera: CameraInterface) -> bool:
     """
       Checks if the trolley is upside down (turned 180° in relation to the track)
     using the camera data.
@@ -412,12 +328,13 @@ def check_reversed_camera(camera: Camera) -> bool:
 
     """
     avg_r, avg_g, count_r, count_g = camera.process_stream()
+    print(f"Avg_r: {avg_r}")
+    print(f"Avg_g: {avg_g}")
 
     if avg_r < 0 or avg_g < 0:
         return False
-
-    # Em orientação normal, avg_r deve ser menor que avg_g.
-    return avg_r > avg_g
+     
+    return avg_r < avg_g
 
 
 def reversing_direction(interface: Dict[str, Any], data: Dict[str, Any]) -> None:
@@ -432,91 +349,22 @@ def reversing_direction(interface: Dict[str, Any], data: Dict[str, Any]) -> None
                 
     if avg_left > avg_right:
         print("Espace libre à gauche, rotation vers la gauche...")
-        correction_steer_pwm = STEER2PWM_B + (STEERING_LIMIT * STEER2PWM_A)
+        interface["steer"].set_steering_angle(+20)
+        activate_reverse(interface["speed"])
+        time.sleep(2.0)
+        deactivate_reverse(interface["speed"])
+        interface["steer"].set_steering_angle(-20)
+        interface["speed"].set_duty_cycle(8.4)
+        time.sleep(2.0)
+        
+        return
     else:
         print("Espace libre à droite, rotation vers la droite...")
-        correction_steer_pwm = STEER2PWM_B - (STEERING_LIMIT * STEER2PWM_A)
-
-    # Aplicando os ajustes de direção
-    interface["steer"].set_duty_cycle(correction_steer_pwm)
-
-    # Reduzindo a velocidade para uma correção segura
-    interface["speed"].set_duty_cycle(PWM_REVERSE)
-
-    # Pequena pausa para a correção
-    time.sleep(2)
-
-    # Após a correção, recalculamos o steer e speed
-    steer, steer_pwm = compute_steer(data)
-    speed, speed_pwm = compute_speed(data, steer)
-
-    # Aplicar os novos valores após a correção
-    interface["steer"].set_duty_cycle(steer_pwm)
-    interface["speed"].set_duty_cycle(speed_pwm)
-
-
-"ainda vou arrumar"
-def reverse_with_camera(interface: Dict[str, Any], camera: Camera) -> None:
-    """
-    Performs the reverse maneuver based on the camera data.
-
-    The idea is that the red dots (left wall) and green dots (right wall)
-    indicate the space available. If the space is small, the reverse should be slower and,
-    if one side is freer than the other, the trolley's direction will be adjusted.
-
-    Args:
-        interface (Dict[str, Any]): Dictionary containing the trolley's components.
-        camera (Camera): Camera instance for analyzing the environment.
-    """
-    global last_reverse
-
-    interface["lidar"].stop()  # Para leituras inconsistentes do LiDAR durante a manobra
-
-    console.info("Manœuvre de recul basée sur la caméra...")
-    
-    avg_r, avg_g, count_r, count_g = camera.process_stream()
-
-    # If there isn't enough information, make a cautious U-turn
-    if avg_r < 0 or avg_g < 0:
-        console.info("Ré prudent - peu d'informations de la part de la caméra")
-        steer_pwm = STEER2PWM_B  # Neutral direction
-        speed_pwm = PWM_REVERSE * 0.7  # Slower reverse
-    else:
-        # Calculate space between detected walls
-        gap = avg_g - avg_r
-
-        # If the space is too small, reduce the speed
-        if gap < 100:  
-            console.info("Espace restreint - marche arrière plus lente")
-            speed_pwm = PWM_REVERSE * 0.6  # Slow reverse
-        else:
-            speed_pwm = PWM_REVERSE  # Normal reverse
-
-        # Decide on direction based on available space
-        if avg_r > avg_g:
-            console.info("Espace plus grand à gauche - tourner à gauche en marche arrière")
-            steer_pwm = STEER2PWM_B + (STEERING_LIMIT * STEER2PWM_A)  
-        else:
-            console.info("Espace plus grand à droite - tourner à droite en marche arrière")
-            steer_pwm = STEER2PWM_B - (STEERING_LIMIT * STEER2PWM_A) 
-        
-        speed_pwm = PWM_REVERSE  # Normal speed for reverse
-
-    # Small speed adjustments to avoid jerks
-    interface["speed"].set_duty_cycle(7.0)
-    time.sleep(0.03)
-    interface["speed"].set_duty_cycle(7.5)
-    time.sleep(0.03)
-
-    # Perform the reverse maneuver for a short time to avoid long adjustments
-    interface["steer"].set_duty_cycle(steer_pwm)
-    interface["speed"].set_duty_cycle(speed_pwm)
-
-    time.sleep(1.0)  # Time setting for the maneuver
-
-    # Returns to normal control
-    interface["speed"].set_duty_cycle(7.5)  # Stop the reverse movement
-    interface["lidar"].start()  # Reactivate LiDAR for new readings
-
-    last_reverse = time.time()
-    console.info("Ré terminée, retour au contrôle normal")
+        interface["steer"].set_steering_angle(-20)
+        activate_reverse(interface["speed"])
+        time.sleep(2.0)
+        deactivate_reverse(interface["speed"])
+        interface["steer"].set_steering_angle(+20)
+        interface["speed"].set_duty_cycle(8.4)
+        time.sleep(2.0)
+        return

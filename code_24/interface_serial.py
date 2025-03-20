@@ -1,5 +1,5 @@
 from interfaces import SpeedInterface, UltrasonicInterface, BatteryInterface
-from serial_singleton import *
+from serial_process import *
 from constants import TICKS_TO_METER
 
 class SharedMemSpeedInterface(SpeedInterface):

@@ -11,7 +11,7 @@ lines = []
 
 parameters = {
     "steer": {"min": DC_STEER_MIN, "max": DC_STEER_MAX},
-    "speed": {"min": DC_SPEED_MIN, "max": DC_SPEED_MAX}
+    "speed": {"min": ESC_DC_MIN, "max": ESC_DC_MAX}
 }
 
 steer_pwm = PWM(channel=1, frequency=50.0)
@@ -248,7 +248,7 @@ speed_pwm.stop()
 
 cfg["DC_STEER_MIN"] = parameters["steer"]["min"]
 cfg["DC_STEER_MAX"] = parameters["steer"]["max"]
-cfg["DC_SPEED_MIN"] = parameters["speed"]["min"]
-cfg["DC_SPEED_MAX"] = parameters["speed"]["max"]
+cfg["ESC_DC_MIN"] = parameters["speed"]["min"]
+cfg["ESC_DC_MAX"] = parameters["speed"]["max"]
 
 save_config(cfg)

@@ -4,7 +4,7 @@ import time
 import numpy as np
 import multiprocessing as mp
 from rplidar import RPLidar, RPLidarException
-import central_logger as cl
+import voiture_logger as cl
 from constants import (
     LIDAR_BAUDRATE,
     LIDAR_HEADING_OFFSET_DEG,
@@ -12,9 +12,7 @@ from constants import (
     LIDAR_POINT_TIMEOUT_MS
 )
 
-# ------------------------------------------------------------------------------------
-# Concrete Implementation using RPLidar
-# ------------------------------------------------------------------------------------
+
 class RPLidarReader(LiDarInterface):
     """
     Implementation of LiDarInterface that uses RPLidar in a separate process

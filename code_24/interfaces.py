@@ -4,9 +4,6 @@ from picamera2 import Picamera2
 from abc import ABC, abstractmethod
 from typing import List, Tuple
 
-# -------------------------------------------------------------------------------
-# Input Interfaces (same as before)
-# -------------------------------------------------------------------------------
 class LiDarInterface(ABC):
     @abstractmethod
     def get_lidar_data(self) -> np.array:
@@ -31,69 +28,27 @@ class BatteryInterface(ABC):
         """Returns the current battery voltage."""
         pass
 
+
 class CameraInterface(ABC):
     @abstractmethod
     def get_camera_frame(self) -> np.ndarray:
-        """Returns the latest camera frame as a NumPy array."""
+        """Returns the current camera frame as a numpy array."""
+        pass
+    
+    @abstractmethod
+    def process_stream(self):
+        """
+        Processes the camera stream and returns detection results.
+        
+        Returns:
+            tuple: (avg_red_x, avg_green_x, red_ratio, green_ratio)
+                - avg_red_x: Average x-position of red pixels, or -1 if none detected
+                - avg_green_x: Average x-position of green pixels, or -1 if none detected
+                - red_ratio: Ratio of red pixels to total frame size
+                - green_ratio: Ratio of green pixels to total frame size
+        """
         pass
 
-# -------------------------------------------------------------------------------
-# Camera Interface
-# -------------------------------------------------------------------------------
-class RealCamera(CameraInterface):
-    def __init__(self, width=640, height=480):
-        self.picam2 = Picamera2()
-        config = self.picam2.create_preview_configuration(
-            main={"size": (width, height)},
-            lores={"size": (width, height)}
-        )
-        self.picam2.configure(config)
-
-        try:
-            self.picam2.start()
-            print("Initialisation réussie de la caméra")
-        except Exception as e:
-            print(f"Erreur d'initialisation de la caméra: {e}")
-            raise
-
-        self.width = width
-        self.height = height
-
-    def get_camera_frame(self) -> np.ndarray:
-        frame = self.picam2.capture_array()
-        if frame is None:
-            print("Le cadre de la caméra n'a pas pu être capturé")
-            return None
-        return frame
-
-    def process_stream(self):
-        frame = self.get_camera_frame()
-        if frame is None:
-            return None, None, 0, 0
-
-        frame_hsv = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
-
-        # Faixas de cor para detecção
-        red_lower, red_upper = np.array([0, 150, 150]), np.array([10, 255, 255])
-        green_lower, green_upper = np.array([50, 100, 100]), np.array([70, 255, 255])
-
-        mask_r = cv2.inRange(frame_hsv, red_lower, red_upper)
-        mask_g = cv2.inRange(frame_hsv, green_lower, green_upper)
-
-        stack_r = np.column_stack(np.where(mask_r > 0))
-        avg_r = np.mean(stack_r[:, 1]) if stack_r.size > 0 else -1
-
-        stack_g = np.column_stack(np.where(mask_g > 0))
-        avg_g = np.mean(stack_g[:, 1]) if stack_g.size > 0 else -1
-
-        count_r = np.count_nonzero(mask_r) / (self.width * self.height)
-        count_g = np.count_nonzero(mask_g) / (self.width * self.height)
-
-        return avg_r, avg_g, count_r, count_g
-
-# -------------------------------------------------------------------------------
-# Output Interfaces (same as before)
-# -------------------------------------------------------------------------------
 class SteerInterface(ABC):
     @abstractmethod
     def set_steering_angle(self, angle: float):
@@ -107,25 +62,19 @@ class SteerInterface(ABC):
 class MotorInterface(ABC):
     @abstractmethod
     def set_speed(self, speed: float):
-        """Sets the target speed of the vehicle (in m/s)"""
+        """Sets the target speed of the vehicle (in absolute from -3 to 3)"""
         pass
     
     @abstractmethod
     def stop():
         pass
 
-# -------------------------------------------------------------------------------
-# Console Interface
-# -------------------------------------------------------------------------------
 class ConsoleInterface(ABC):
     @abstractmethod
     def print_to_console(self, message: str):
         """Prints a info message to console."""
         pass
 
-# -------------------------------------------------------------------------------
-# Mock Implementations
-# -------------------------------------------------------------------------------
 class MockLiDarInterface(LiDarInterface):
     def get_lidar_data(self) -> np.array:
         """
@@ -133,37 +82,72 @@ class MockLiDarInterface(LiDarInterface):
         for quick testing. You could also randomize these
         values if you want to simulate changing distances.
         """
-        return np.ones(360)  # All angles have distance=1.0 (meter/centimeter/whatever your unit is)
+        return np.ones(360)
 
 class MockUltrasonicInterface(UltrasonicInterface):
     def get_ultrasonic_data(self) -> float:
         """
         Returns a constant distance value (in cm).
         """
-        return 100.0  # e.g., 100 cm
+        return 100.0
 
 class MockSpeedInterface(SpeedInterface):
     def get_speed(self) -> float:
         """
         Returns a constant speed value (in m/s).
         """
-        return 1.5  # e.g., 1.5 m/s
+        return 1.5
 
 class MockBatteryInterface(BatteryInterface):
     def get_battery_voltage(self) -> float:
         """
         Returns a constant battery voltage.
         """
-        return 12.3  # e.g., 12.3 V
-
+        return 1.2345
+    
 class MockCameraInterface(CameraInterface):
-    def get_camera_frame(self):
+    def __init__(self, width=640, height=480):
+        """
+        Initialize a mock camera interface for testing.
+        
+        Args:
+            width (int): Width of the mock frame
+            height (int): Height of the mock frame
+        """
+        self.width = width
+        self.height = height
+        print("[MockCameraInterface] Initialized")
+    
+    def get_camera_frame(self) -> np.ndarray:
         """
         Returns a mock camera frame.
-        Could be None or a placeholder array.
+        
+        Returns:
+            np.ndarray: A black frame with the specified dimensions
         """
-        # Return None or a dummy NumPy array to simulate a frame.
-        return np.zeros((480, 640, 3), dtype=np.uint8)
+        return np.zeros((self.height, self.width, 3), dtype=np.uint8)
+    
+    def process_stream(self):
+        """
+        Returns mock stream processing results.
+        
+        Returns:
+            tuple: Mock values for (avg_red_x, avg_green_x, red_ratio, green_ratio)
+        """
+        # Mock values that could be returned in a real scenario
+        # -1 means no detection, positive values represent positions
+        avg_r = 150  # Mock red object position (left side)
+        avg_g = 450  # Mock green object position (right side)
+        
+        # Mock detection ratios (percentage of frame covered)
+        count_r = 0.05  # 5% of frame is red
+        count_g = 0.08  # 8% of frame is green
+        
+        return avg_r, avg_g, count_r, count_g
+    
+    def cleanup(self):
+        """Mock cleanup method"""
+        print("[MockCameraInterface] Resources cleaned up")
 
 class MockSteerInterface(SteerInterface):
     def set_steering_angle(self, angle: float):
@@ -186,11 +170,7 @@ class MockConsoleInterface(ConsoleInterface):
         """
         print(f"[MockConsole] {message}")
 
-# -------------------------------------------------------------------------------
-# Example usage
-# -------------------------------------------------------------------------------
 if __name__ == "__main__":
-    # Create mock instances
     lidar_mock = MockLiDarInterface()
     ultrasonic_mock = MockUltrasonicInterface()
     speed_mock = MockSpeedInterface()
@@ -200,7 +180,6 @@ if __name__ == "__main__":
     motor_mock = MockMotorInterface()
     console_mock = MockConsoleInterface()
 
-    # Use them as if they were real
     console_mock.print_to_console("Testing Mock Interfaces...")
     lidar_data = lidar_mock.get_lidar_data()
     console_mock.print_to_console(f"LiDAR mock data (first 10 angles): {lidar_data[:10]}")
@@ -210,7 +189,7 @@ if __name__ == "__main__":
 
     # Steering and speed commands
     steer_mock.set_steering_angle(15.0)
-    motor_mock.set_speed(2.0)
+    motor_mock.set_speed(1.0)
 
     # Camera
     frame = camera_mock.get_camera_frame()
