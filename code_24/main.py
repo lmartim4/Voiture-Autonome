@@ -6,6 +6,7 @@ from interface_serial import *
 from interface_lidar import RPLidarReader
 from interface_motor import RealMotorInterface
 from interface_steer import RealSteerInterface
+from interface_camera import RealCameraInterface
 
 from voiture_logger import CentralLogger
 from constants import LIDAR_BAUDRATE, FIELD_OF_VIEW_DEG
@@ -25,7 +26,7 @@ def main():
         I_SpeedReading = SharedMemSpeedInterface()
         I_back_wall_distance_reading = SharedMemUltrasonicInterface()
         I_BatteryReading = SharedMemBatteryInterface()
-        I_Camera = interfaces.CameraInterface()
+        I_Camera = RealCameraInterface()
         
         nonzero_count = np.count_nonzero(I_Lidar.get_lidar_data())
         

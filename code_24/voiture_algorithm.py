@@ -140,7 +140,7 @@ class VoitureAlgorithm:
         steer, steer_dc, target_angle = compute_steer_from_lidar(shrinked)
 
         self.steer.set_steering_angle(steer)
-        self.motor.set_speed(1.5)
+        self.motor.set_speed(0.7)
 
         end_time = time.time()  # End timing
         loop_time = end_time - start_time  # Calculate elapsed time
