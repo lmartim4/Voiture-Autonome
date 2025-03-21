@@ -2,7 +2,7 @@ from algorithm.interfaces import CameraInterface
 import numpy as np
 import cv2
 from picamera2 import Picamera2
-import voiture_logger
+import algorithm.voiture_logger as voiture_logger
 
 class RealCameraInterface(CameraInterface):
     def __init__(self, width=640, height=480):

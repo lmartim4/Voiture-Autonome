@@ -5,7 +5,7 @@ import time
 import numpy as np
 import multiprocessing as mp
 from rplidar import RPLidar, RPLidarException
-import voiture_logger as cl
+import algorithm.voiture_logger as cl
 from algorithm.constants import LIDAR_BAUDRATE, LIDAR_HEADING_OFFSET_DEG, LIDAR_FOV_FILTER, LIDAR_POINT_TIMEOUT_MS
 
 

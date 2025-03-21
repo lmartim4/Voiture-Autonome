@@ -1,7 +1,7 @@
 import os
 import serial
 from typing import List
-import voiture_logger
+import algorithm.voiture_logger as voiture_logger
 
 RPI5 = True
 CHIP_PATH = f"/sys/class/pwm/pwmchip{2 if RPI5 else 0}"

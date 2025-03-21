@@ -8,7 +8,7 @@ from interface_motor import RealMotorInterface
 from interface_steer import RealSteerInterface
 from interface_camera import RealCameraInterface
 
-from voiture_logger import CentralLogger
+from algorithm.voiture_logger import CentralLogger
 from algorithm.constants import LIDAR_BAUDRATE, FIELD_OF_VIEW_DEG
 from algorithm.voiture_algorithm import VoitureAlgorithm
 

@@ -1,7 +1,7 @@
 from algorithm.interfaces import MotorInterface
 from algorithm.constants import ESC_DC_MIN, ESC_DC_MAX
 from raspberry_utils import PWM
-import voiture_logger
+import algorithm.voiture_logger as voiture_logger
 import time
 
 NEUTRAL_DC = (ESC_DC_MIN + ESC_DC_MAX)/2

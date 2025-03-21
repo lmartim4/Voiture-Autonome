@@ -1,7 +1,7 @@
 from algorithm.constants import STEER_VARIATION_RATE, STEER_CENTER
 from algorithm.interfaces import SteerInterface
 from raspberry_utils import PWM
-import voiture_logger
+import algorithm.voiture_logger as voiture_logger
 
 class RealSteerInterface(SteerInterface):
     """
