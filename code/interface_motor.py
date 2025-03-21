@@ -57,8 +57,9 @@ class RealMotorInterface(MotorInterface):
         - Neutral (0.0) = 7.5% duty cycle
         - Full forward (3.0) = 10% duty cycle
         """
-        
-        speed = max(-3.0, min(speed, 3.0))
+
+        MAX_SPEED = 2.3 # 3.0
+        speed = max(-MAX_SPEED, min(speed, MAX_SPEED))
         
         if speed < 0 and not self._in_reverse_mode:
             self._enter_reverse_mode()

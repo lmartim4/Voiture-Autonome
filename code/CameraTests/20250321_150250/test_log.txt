@@ -1,0 +1,17 @@
+Camera Test Log - 20250321_150250
+Resolution: 640x480
+Number of frames: 5
+Delay between frames: 1.0 seconds
+
+Frame 1: Saved to CameraTests/20250321_150250/frame_01.png
+  Shape: (480, 640, 4), Min: 0, Max: 255
+Frame 2: Saved to CameraTests/20250321_150250/frame_02.png
+  Shape: (480, 640, 4), Min: 0, Max: 255
+Frame 3: Saved to CameraTests/20250321_150250/frame_03.png
+  Shape: (480, 640, 4), Min: 0, Max: 255
+Frame 4: Saved to CameraTests/20250321_150250/frame_04.png
+  Shape: (480, 640, 4), Min: 0, Max: 255
+Frame 5: Saved to CameraTests/20250321_150250/frame_05.png
+  Shape: (480, 640, 4), Min: 0, Max: 255
+
+Error during test: not enough values to unpack (expected 7, got 4)
