@@ -1,4 +1,4 @@
-from config import *
+from algorithm.config import *
 import numpy as np
 
 cfg = None

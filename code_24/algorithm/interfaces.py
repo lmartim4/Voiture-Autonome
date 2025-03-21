@@ -65,6 +65,10 @@ class MotorInterface(ABC):
         """Sets the target speed of the vehicle (in absolute from -3 to 3)"""
         pass
     
+    def get_speed(self):
+        """Returns the current target speed of the vehicle (in absolute from -3 to 3)"""
+        pass
+    
     @abstractmethod
     def stop():
         pass
@@ -157,11 +161,14 @@ class MockSteerInterface(SteerInterface):
         print(f"[MockSteerInterface] Steering angle set to: {angle}°")
 
 class MockMotorInterface(MotorInterface):
+    current_speed = 0
+    
     def set_speed(self, speed: float):
-        """
-        Mock implementation that just prints the speed.
-        """
-        print(f"[MockMotorInterface] Speed set to: {speed} m/s")
+        self.current_speed = speed
+        print(f"[MockMotorInterface] Speed set to: {self.current_speed} m/s")
+    
+    def get_speed(self):
+        return self.current_speed
 
 class MockConsoleInterface(ConsoleInterface):
     def print_to_console(self, message: str):

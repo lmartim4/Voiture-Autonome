@@ -1,6 +1,6 @@
-from control import compute_pwm
-from interfaces import SteerInterface
-from core import PWM
+from algorithm.constants import STEER_VARIATION_RATE, STEER_CENTER
+from algorithm.interfaces import SteerInterface
+from raspberry_utils import PWM
 import voiture_logger
 
 class RealSteerInterface(SteerInterface):
@@ -36,7 +36,10 @@ class RealSteerInterface(SteerInterface):
                              - ~ +30 degrees => 10% duty cycle
         """
         
-        duty_cycle = compute_pwm(angle)
+        duty_cycle = self.compute_pwm(angle)
                 
         self._pwm.set_duty_cycle(duty_cycle)
         self.logger.debug(f"Steering angle set to {angle}° => duty cycle: {duty_cycle}%")
+
+    def compute_pwm(self, steer):
+        return steer * STEER_VARIATION_RATE + STEER_CENTER

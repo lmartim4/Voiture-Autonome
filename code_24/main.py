@@ -1,6 +1,6 @@
 import time
 import numpy as np
-import interfaces
+import algorithm.interfaces as interfaces
 
 from interface_serial import *
 from interface_lidar import RPLidarReader
@@ -9,8 +9,8 @@ from interface_steer import RealSteerInterface
 from interface_camera import RealCameraInterface
 
 from voiture_logger import CentralLogger
-from constants import LIDAR_BAUDRATE, FIELD_OF_VIEW_DEG
-from voiture_algorithm import VoitureAlgorithm
+from algorithm.constants import LIDAR_BAUDRATE, FIELD_OF_VIEW_DEG
+from algorithm.voiture_algorithm import VoitureAlgorithm
 
 logger_instance = CentralLogger(sensor_name="main")
 logger = logger_instance.get_logger()
@@ -18,7 +18,7 @@ logger = logger_instance.get_logger()
 def main():
     try:
         I_Lidar = RPLidarReader(port="/dev/ttyUSB0", baudrate=LIDAR_BAUDRATE)
-        # I_Lidar.start_live_plot()
+        I_Lidar.start_live_plot()
         
         I_Steer = RealSteerInterface(channel=1, frequency=50.0)  
         I_Motor = RealMotorInterface(channel=0, frequency=50.0)

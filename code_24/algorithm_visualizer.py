@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
 import matplotlib.patches as patches
 
-import control
+import algorithm.control_direction as control
 
 class VoitureAlgorithmPlotter:
     def __init__(self):

@@ -1,16 +1,12 @@
-from interfaces import LiDarInterface
-from plot.algorithm_visualizer import *
+from algorithm.interfaces import LiDarInterface
+from algorithm_visualizer import *
+
 import time
 import numpy as np
 import multiprocessing as mp
 from rplidar import RPLidar, RPLidarException
 import voiture_logger as cl
-from constants import (
-    LIDAR_BAUDRATE,
-    LIDAR_HEADING_OFFSET_DEG,
-    LIDAR_FOV_FILTER,
-    LIDAR_POINT_TIMEOUT_MS
-)
+from algorithm.constants import LIDAR_BAUDRATE, LIDAR_HEADING_OFFSET_DEG, LIDAR_FOV_FILTER, LIDAR_POINT_TIMEOUT_MS
 
 
 class RPLidarReader(LiDarInterface):
