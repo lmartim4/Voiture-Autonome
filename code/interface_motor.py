@@ -1,6 +1,6 @@
 from algorithm.interfaces import MotorInterface
 from algorithm.constants import ESC_DC_MIN, ESC_DC_MAX
-from raspberry_utils import PWM
+from PWM import PWM
 import algorithm.voiture_logger as voiture_logger
 import time
 
@@ -16,12 +16,14 @@ class RealMotorInterface(MotorInterface):
         self._pwm.start(NEUTRAL_DC) # Start at neutral position (7.5% for Maverick msc-30BR-WP)
         self._in_reverse_mode = False
         self.logger.info("Motor PWM initialized and set to neutral (7.5%)")
-
+        self.speed = 0
+    
     def stop(self):
         """Stops the ESC and PWM"""
         self._pwm.set_duty_cycle(NEUTRAL_DC)  # Return to neutral for Maverick ESC
         self._in_reverse_mode = False
         self._pwm.stop()
+        self.speed = 0
         self.logger.info("Motor stopped")
     
     def _enter_reverse_mode(self):
@@ -47,7 +49,7 @@ class RealMotorInterface(MotorInterface):
         self._in_reverse_mode = False
         self.logger.debug("Exited reverse mode")
 
-    def set_speed(self, speed: float):
+    def set_speed(self, s: float):
         """
         Sets the motor speed from -3.0 (full reverse) to 3.0 (full forward)
         0.0 is neutral position
@@ -58,23 +60,26 @@ class RealMotorInterface(MotorInterface):
         - Full forward (3.0) = 10% duty cycle
         """
 
-        MAX_SPEED = 2.3 # 3.0
-        speed = max(-MAX_SPEED, min(speed, MAX_SPEED))
+        MAX_SPEED = 3 # 3.0
+        self.speed = max(-MAX_SPEED, min(s, MAX_SPEED))
         
-        if speed < 0 and not self._in_reverse_mode:
+        if self.speed < 0 and not self._in_reverse_mode:
             self._enter_reverse_mode()
-        elif speed >= 0 and self._in_reverse_mode:
+        elif self.speed >= 0 and self._in_reverse_mode:
             self._exit_reverse_mode()
         
-        if abs(speed) < 0.1:
+        if abs(self.speed) < 0.1:
             duty_cycle = NEUTRAL_DC
-        elif speed >= 0:
-            duty_cycle = NEUTRAL_DC + (speed / 3.0) * (MAX_DC - NEUTRAL_DC)
+        elif self.speed >= 0:
+            duty_cycle = NEUTRAL_DC + (self.speed / 3.0) * (MAX_DC - NEUTRAL_DC)
         else:
-            duty_cycle = MIN_DC + ((speed + 3.0) / 3.0) * (NEUTRAL_DC - MIN_DC)
+            duty_cycle = MIN_DC + ((self.speed + 3.0) / 3.0) * (NEUTRAL_DC - MIN_DC)
         
         self._pwm.set_duty_cycle(duty_cycle)
-        self.logger.debug(f"Speed set to {speed} m/s => duty cycle: {duty_cycle}%")
+        self.logger.debug(f"Speed set to {self.speed} m/s => duty cycle: {duty_cycle}%")
+
+    def get_speed(self) -> float:
+        return self.speed
 
     def set_duty_cycle(self, duty_cycle: float):
         """Direct control of PWM duty cycle for debugging or manual control"""

@@ -65,7 +65,7 @@ class MotorInterface(ABC):
         """Sets the target speed of the vehicle (in absolute from -3 to 3)"""
         pass
     
-    def get_speed(self):
+    def get_speed(self) -> float:
         """Returns the current target speed of the vehicle (in absolute from -3 to 3)"""
         pass
     

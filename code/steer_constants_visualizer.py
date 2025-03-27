@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from control import compute_steer, compute_pwm
+from algorithm.control_direction import compute_steer, compute_pwm
 from algorithm.constants import DC_STEER_MIN, DC_STEER_MAX
 
 def main():

@@ -1,10 +1,15 @@
 import seaborn as sns
 import numpy as np
+
+import matplotlib
+
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
 import matplotlib.patches as patches
 
 import algorithm.control_direction as control
+
+matplotlib.use('TkAgg')
 
 class VoitureAlgorithmPlotter:
     def __init__(self):

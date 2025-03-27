@@ -1,76 +1,15 @@
-import multiprocessing as mp
+import serial
+import threading
 import time
-from raspberry_utils import Serial
+import multiprocessing
+
 from algorithm.constants import TICKS_TO_METER
 from algorithm.interfaces import SpeedInterface, UltrasonicInterface, BatteryInterface
+from abc import ABC, abstractmethod
 
-# ========== Shared Memory and Process Control ==========
-_last_serial_read = mp.Array('d', 3)  # [speed, ultrasonic, battery]
-_last_serial_update = mp.Value('d', 0.0)
-_stop_event = mp.Event()
-_process = None
+_last_serial_read = multiprocessing.Array('d', [0.0, 0.0, 0.0])  # [speed, ultrasonic, battery]
+_last_serial_update = multiprocessing.Value('d', 0.0)
 
-# ========== Serial Process Functions ==========
-def _serial_process(port, baudrate, timeout):
-    print("[Serial] Child Process started.")
-    ser_conn = Serial(port, baudrate, timeout)
-
-    try:
-        while not _stop_event.is_set():
-            speed, ultrasonic, battery = ser_conn.read(depth=5)
-
-            with _last_serial_read.get_lock():
-                _last_serial_read[0] = speed
-                _last_serial_read[1] = ultrasonic
-                _last_serial_read[2] = battery
-
-            with _last_serial_update.get_lock():
-                _last_serial_update.value = time.time()
-
-            # A small sleep to avoid CPU hammering, it is now synchronous to main process
-            time.sleep(0.05)
-    except KeyboardInterrupt as eint:
-        _stop_event.set()
-    except Exception as e:
-        print(f"[Serial] Exception in background process: {e}")
-
-    finally:
-        ser_conn.close()
-        print("[Serial] Child Process exiting.")
-
-
-def init_serial(port="/dev/ttyACM0", baudrate=9600, timeout=1.0):
-    """
-    Starts the background process if not already started.
-    You can call this once in your main program.
-    """
-    global _process
-
-    if _process is not None and _process.is_alive():
-        print("[Serial] Background process is already running.")
-        return
-
-    _stop_event.clear()
-
-    _process = mp.Process(target=_serial_process,
-                          args=(port, baudrate, timeout),
-                          daemon=True)
-    _process.start()
-    print("[Serial] Background process started.")
-
-
-def shutdown_serial():
-    global _process
-
-    if _process is None:
-        return
-
-    print("[Serial] Shutting down background process...")
-    _stop_event.set()
-    _process.join()
-    _process = None
-
-# ========== Data Access Functions ==========
 def get_speed() -> float:
     with _last_serial_read.get_lock():
         return _last_serial_read[0]
@@ -87,8 +26,6 @@ def get_last_update() -> float:
     with _last_serial_update.get_lock():
         return _last_serial_update.value
 
-# ========== Interface Classes ==========
-
 class SharedMemSpeedInterface(SpeedInterface):
     def get_speed(self) -> float:
         return (get_speed()/TICKS_TO_METER)
@@ -100,3 +37,72 @@ class SharedMemUltrasonicInterface(UltrasonicInterface):
 class SharedMemBatteryInterface(BatteryInterface):
     def get_battery_voltage(self) -> float:
         return get_battery()
+
+def start_serial_monitor(port='/dev/ttyACM0', baudrate=9600):
+    """Start the serial monitor in a separate thread"""
+    thread = threading.Thread(target=run_serial_monitor, args=(port, baudrate))
+    thread.daemon = True
+    thread.start()
+    return thread
+
+def run_serial_monitor(port, baudrate):
+    """Run the serial monitor and update shared memory with parsed data"""
+    try:
+        ser = serial.Serial(port, baudrate, timeout=1)
+        print(f"Connected to {port} at {baudrate} baud")
+        
+        while True:
+            if ser.in_waiting > 0:
+                line = ser.readline().decode('utf-8', errors='replace').strip()
+                if line:
+                    # Parse the data (format: "speed/ultrasonic/battery")
+                    try:
+                        parts = line.split('/')
+                        if len(parts) == 3:
+                            speed = float(parts[0])
+                            ultrasonic = float(parts[1])
+                            battery = float(parts[2])
+                            
+                            # Update shared memory
+                            with _last_serial_read.get_lock():
+                                _last_serial_read[0] = speed
+                                _last_serial_read[1] = ultrasonic
+                                _last_serial_read[2] = battery
+                            
+                            with _last_serial_update.get_lock():
+                                _last_serial_update.value = time.time()
+                            
+                            # print(f"Updated: Speed={speed}, Ultrasonic={ultrasonic}, Battery={battery}")
+                    except ValueError:
+                        print(f"Failed to parse: {line}")
+            
+            time.sleep(0.01)
+    
+    except Exception as e:
+        print(f"Serial monitor error: {e}")
+    finally:
+        if 'ser' in locals() and ser.is_open:
+            ser.close()
+            print("Serial connection closed")
+
+# Example usage
+if __name__ == "__main__":
+    # Start the serial monitor
+    monitor_thread = start_serial_monitor(port='/dev/ttyACM0', baudrate=9600)
+    
+    # Create interface instances
+    speed_interface = SharedMemSpeedInterface()
+    ultrasonic_interface = SharedMemUltrasonicInterface()
+    battery_interface = SharedMemBatteryInterface()
+    
+    try:
+        while True:
+            print(f"Speed: {speed_interface.get_speed():.2f} m/s")
+            print(f"Distance: {ultrasonic_interface.get_ultrasonic_data():.1f} cm")
+            print(f"Battery: {battery_interface.get_battery_voltage():.2f} V")
+            print(f"Last update: {time.time() - get_last_update():.2f} seconds ago")
+            print("-" * 30)
+            time.sleep(0.5)
+    
+    except KeyboardInterrupt:
+        print("\nExiting...")

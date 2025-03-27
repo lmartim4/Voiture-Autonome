@@ -139,7 +139,8 @@ def convolution_filter(distances):
 
     ## Corsi teste
     # percentuais = np.array([ 0.1, 56, 56, 56, 0.1])
-    percentuais = np.array([ 36, 5, 36, 56, 36, 5, 36])
+    # percentuais = np.array([ 36, 5, 36, 56, 36, 5, 36])
+    percentuais = np.array([ 1, 5, 56, 5, 1])
     
     pesos = percentuais / np.sum(percentuais) 
 
@@ -183,3 +184,4 @@ def lerp(value: float, factor: np.ndarray) -> np.ndarray:
     scale = (value - factor[index - 1, 0]) / delta[0]
 
     return factor[index - 1, 1] + scale * delta[1]
+

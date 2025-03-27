@@ -3,7 +3,7 @@ import time
 from typing import Any, Union
 from customtkinter import *
 from algorithm.constants import *
-from raspberry_utils import *
+from code.PWM import *
 
 set_appearance_mode("Dark")
 

@@ -2,7 +2,7 @@ import time
 import numpy as np
 import algorithm.interfaces as interfaces
 
-from interface_serial import *
+from interface_serial import SharedMemBatteryInterface, SharedMemUltrasonicInterface, SharedMemSpeedInterface, start_serial_monitor
 from interface_lidar import RPLidarReader
 from interface_motor import RealMotorInterface
 from interface_steer import RealSteerInterface
@@ -11,6 +11,7 @@ from interface_camera import RealCameraInterface
 from algorithm.voiture_logger import CentralLogger
 from algorithm.constants import LIDAR_BAUDRATE, FIELD_OF_VIEW_DEG
 from algorithm.voiture_algorithm import VoitureAlgorithm
+ 
 
 logger_instance = CentralLogger(sensor_name="main")
 logger = logger_instance.get_logger()
@@ -18,11 +19,13 @@ logger = logger_instance.get_logger()
 def main():
     try:
         I_Lidar = RPLidarReader(port="/dev/ttyUSB0", baudrate=LIDAR_BAUDRATE)
-        I_Lidar.start_live_plot()
+        #I_Lidar.start_live_plot()
         
-        I_Steer = RealSteerInterface(channel=1, frequency=50.0)  
+        I_Steer = RealSteerInterface(channel=1, frequency=50.0)
         I_Motor = RealMotorInterface(channel=0, frequency=50.0)
-        init_serial(port="/dev/ttyACM0", baudrate=9600, timeout=1.0)
+
+        start_serial_monitor(port='/dev/ttyACM0', baudrate=9600)
+                
         I_SpeedReading = SharedMemSpeedInterface()
         I_back_wall_distance_reading = SharedMemUltrasonicInterface()
         I_BatteryReading = SharedMemBatteryInterface()
@@ -44,6 +47,7 @@ def main():
                         steer=I_Steer,
                         motor=I_Motor,
                         console=interfaces.MockConsoleInterface())
+
         
         while(True):
             loop(algorithm)
@@ -54,7 +58,7 @@ def main():
         I_Motor.stop()
         I_Steer.stop()
         I_Lidar.stop()
-        shutdown_serial()
+
 
 def loop(algorithm: VoitureAlgorithm):
     algorithm.run_step()
