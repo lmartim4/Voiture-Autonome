@@ -12,6 +12,7 @@ class Color(Enum):
 
 class DetectionStatus(Enum):
     RED_LEFT_GREEN_RIGHT = "RED TO THE LEFT AND GREEN TO THE RIGHT"
+    GREEN_LEFT_RED_RIGHT = "GREEN TO THE LEFT AND RED TO THE RIGHT - ERRO"
     ONLY_RED = "ONLY SEE RED"
     ONLY_GREEN = "ONLY SEE GREEN"
     NONE = "NO COLOR DETECTED"
@@ -41,8 +42,13 @@ def create_color_masks(frame_hsv):
     
     try:
         # Color ranges for detection
-        red_lower, red_upper = np.array([0, 150, 150]), np.array([0, 255 , 255])
-        green_lower, green_upper = np.array([50, 100, 100]), np.array([70, 255, 255])
+        red_brighter_lower, red_brighter_upper = np.array([0, 100, 100]), np.array([10, 255, 255])
+        red_darker_lower, red_darker_upper = np.array([160, 100, 100]), np.array([180, 255, 255])
+
+        #green_brighter_lower, green_brighter_upper = np.array([50, 100, 100]), np.array([10, 255, 255])
+        #green_darker_lower, green_darker_upper = np.array([170, 150, 150]), np.array([180, 255, 255])
+
+        green_lower, green_upper = np.array([30, 50, 50]), np.array([80, 255, 255])
 
         # Create masks for red and green colors
         
@@ -95,6 +101,8 @@ def determine_detection_status(avg_r, avg_g, count_r, count_g, min_ratio=0.01):
     if red_detected and green_detected:
         if avg_r < avg_g:
             return DetectionStatus.RED_LEFT_GREEN_RIGHT
+        if avg_g < avg_r:
+            return DetectionStatus.GREEN_LEFT_RED_RIGHT
         else:
             return DetectionStatus.NONE
     elif red_detected:
