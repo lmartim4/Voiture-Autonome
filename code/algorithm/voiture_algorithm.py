@@ -4,7 +4,7 @@ import os
 import datetime
 from algorithm.interfaces import *
 from algorithm.constants import HITBOX_H1, HITBOX_H2, HITBOX_W
-from algorithm.control_camera import extract_info
+from algorithm.control_camera import extract_info, DetectionStatus
 from algorithm.control_direction import compute_steer_from_lidar, shrink_space
     
 class VoitureAlgorithm:
@@ -71,7 +71,7 @@ class VoitureAlgorithm:
             # If wheels have been stopped for longer than the threshold
             elif (current_time - self._wheel_stopped_start_time) > COLLISION_TIME_THRESHOLD and not self._collision_detected:
                 self._collision_detected = True
-                self.simple_marche_arrire()
+                self.simple_marche_arrire(DetectionStatus.ONLY_GREEN)
                 self.console.print_to_console(f"&c&l[COLLISION DETECTED] &e- Wheels stopped for &f{COLLISION_TIME_THRESHOLD*1000:.0f}ms &ewhile motor running")
         else:
             # Reset the timer if wheels are moving or motor is stopped
@@ -79,8 +79,13 @@ class VoitureAlgorithm:
                 delattr(self, '_wheel_stopped_start_time')
                 self._collision_detected = False
     
-    def simple_marche_arrire(self):        
-        self.steer.set_steering_angle(-30)
+    def simple_marche_arrire(self, detection):        
+        match (detection):
+            case DetectionStatus.ONLY_GREEN:
+                self.steer.set_steering_angle(-30)
+            case DetectionStatus.ONLY_RED:
+                self.steer.set_steering_angle(30)
+        
         self.motor.set_speed(-1.2)
         time.sleep(1)
         self.motor.set_speed(0)
@@ -96,7 +101,7 @@ class VoitureAlgorithm:
         
         if self.detect_wheel_stopped_collision() :
             print("Detectado")
-            self.on_blocked_by_wheel()
+            #self.on_blocked_by_wheel()
             
         shrinked = shrink_space(raw_lidar)
         steer, target_angle = compute_steer_from_lidar(shrinked)
