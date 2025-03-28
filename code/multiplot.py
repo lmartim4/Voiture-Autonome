@@ -8,8 +8,8 @@ import numpy as np
 from tkinter import filedialog, messagebox
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
-import constants
-from plot.algorithm_visualizer import VoitureAlgorithmPlotter
+import algorithm.constants as constants
+from algorithm_visualizer import VoitureAlgorithmPlotter
 
 def read_lidar_log(filename: str) -> pd.DataFrame:
     records = []

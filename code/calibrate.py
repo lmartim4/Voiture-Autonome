@@ -2,8 +2,8 @@ import re
 import time
 from typing import Any, Union
 from customtkinter import *
-from constants import *
-from core import *
+from algorithm.constants import *
+from code.raspberry_pwm import PWM
 
 set_appearance_mode("Dark")
 
@@ -11,7 +11,7 @@ lines = []
 
 parameters = {
     "steer": {"min": DC_STEER_MIN, "max": DC_STEER_MAX},
-    "speed": {"min": DC_SPEED_MIN, "max": DC_SPEED_MAX}
+    "speed": {"min": ESC_DC_MIN, "max": ESC_DC_MAX}
 }
 
 steer_pwm = PWM(channel=1, frequency=50.0)
@@ -136,7 +136,7 @@ def stop_command() -> None:
     and updates the controller accordingly.
     """
 
-    slider_speed.set(0.0)
+    slider_speed.set(0.5)
     changed_controllers("speed")
 
 
@@ -230,7 +230,7 @@ max_speed.bind(
 slider_speed = CTkSlider(master=speed_frame,
     command=lambda event: changed_controllers("speed"))
 slider_speed.grid(row=1, column=1, padx=12, pady=16)
-slider_speed.set(0.0)
+slider_speed.set(0.5)
 
 cur_speed = CTkEntry(master=speed_frame,
     width=48, height=24, justify="center")
@@ -248,7 +248,8 @@ speed_pwm.stop()
 
 cfg["DC_STEER_MIN"] = parameters["steer"]["min"]
 cfg["DC_STEER_MAX"] = parameters["steer"]["max"]
-cfg["DC_SPEED_MIN"] = parameters["speed"]["min"]
-cfg["DC_SPEED_MAX"] = parameters["speed"]["max"]
+
+# cfg["ESC_DC_MIN"] = parameters["speed"]["min"]
+# cfg["ESC_DC_MAX"] = parameters["speed"]["max"]
 
 save_config(cfg)
