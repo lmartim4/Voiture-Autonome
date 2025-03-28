@@ -2,10 +2,11 @@ import pygame
 import numpy as np
 import params
 import os 
+import time
 
 class Environment:
     
-    def __init__(self, map_name, speed_ms =2.5, rotation_speed_deg=3, max_size=800, padding_percent=0.05):
+    def __init__(self, map_name, speed_ms =2.5, rotation_speed_deg=3, max_size=500, padding_percent=0.05):
         """
         Initializes the simulation environment.
 
@@ -93,14 +94,14 @@ class Environment:
         if data:
             for data_dist, data_ang, data_pos in data:
                 point = self.polar2cartesian(data_dist, data_ang, data_pos)
-                if point not in self.pointCloud : 
-                    self.pointCloud.append(point)
+                # if point not in self.pointCloud : 
+                self.pointCloud.append(point)
     
     def show_sensor_data(self):
         # self.infomap = self.map.copy()
 
         for point in self.pointCloud:
-            self.infomap.set_at((int(point[0]), int(point[1])),params.red)
+            self.infomap.set_at((point[0], point[1]),params.red)
 
     def run(self):
         """Main loop to keep the window open."""
@@ -131,7 +132,7 @@ class Environment:
 
             angle_cmd = True
             if keys[pygame.K_a]:  # Rotaciona para esquerda
-                angle_rad += self.rotation_speed  # Converter para radianos
+                angle_rad += self.rotation_speed 
             elif keys[pygame.K_d]:  # Rotaciona para direita
                 angle_rad -= self.rotation_speed
             else:
@@ -180,6 +181,8 @@ class Environment:
 
             # Atualizar a tela
             pygame.display.flip()
+
+            time.sleep(0.01)
 
         pygame.quit()
     

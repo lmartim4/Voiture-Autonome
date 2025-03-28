@@ -47,7 +47,6 @@ class Lidar:
         # TODO : Probably best to revise this, as it doesnt take into account the periodicity 
         # of the angles and any form of jacobian distortion
         distance = max(distance, 0) 
-        angle = max(angle, 0)
 
         return [distance, angle]
     
@@ -57,8 +56,8 @@ class Lidar:
         data = []
         x_global, y_global = self.position[0], self.position[1]
 
-        # linspace from 0 to 2pi, taking 60 samples, not inclusing (False) the endpoint
-        for angle in np.linspace(-np.pi/2, np.pi/2,60, True):
+        # linspace from 0 to 2pi, taking 60 samples, not including (False) the endpoint
+        for angle in np.linspace(-np.pi/2, np.pi/2,60, False):
             angle_scan = self.angle_rad + angle
             x_scan, y_scan = (x_global + self.max_range * np.cos(angle_scan),
                                y_global - self.max_range * np.sin(angle_scan) )
