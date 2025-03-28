@@ -116,7 +116,8 @@ class Environment:
     def move_car(self, cmd_forward, cmd_turn, map_width, map_height):
         """
         Move o carro com base nos comandos e limites do mapa.
-        
+        Verifica colisões com paredes (tratando o carro como um ponto).
+
         :param cmd_forward: int - Comando de movimento para frente/trás (-1, 0, 1)
         :param cmd_turn: int - Comando de rotação para esquerda/direita (-1, 0, 1)
         :param map_width: int - Largura do mapa para limites
@@ -125,26 +126,54 @@ class Environment:
         """
         # Flag para rastrear se houve movimento
         has_moved = False
-        
+
+        # Armazenar posição atual para restaurar em caso de colisão
+        original_position = self.car_position.copy()
+
         # Atualizar ângulo
         if cmd_turn != 0:
             self.car_angle_rad += cmd_turn * self.rotation_speed
             has_moved = True
-            
+
         # Atualizar posição
         if cmd_forward != 0:
+            # Calcular nova posição com base na direção e velocidade
             new_x = int(self.car_position[0] + cmd_forward * np.cos(self.car_angle_rad) * self.speed)
             new_y = int(self.car_position[1] - cmd_forward * np.sin(self.car_angle_rad) * self.speed)
-            
+
             # Limitar a posição ao tamanho do mapa
             if map_width > 0 and map_height > 0:
                 new_x = max(0, min(new_x, map_width - 1))
                 new_y = max(0, min(new_y, map_height - 1))
-            
-            self.car_position = [new_x, new_y]
-            has_moved = True
-        
+
+            # Verificar colisão com paredes (obstáculos pretos)
+            if self.check_collision(new_x, new_y):
+                # Colisão detectada, restaurar posição original
+                self.car_position = original_position
+            else:
+                # Sem colisão, atualizar posição
+                self.car_position = [new_x, new_y]
+                has_moved = True
+
         return has_moved
+
+    def check_collision(self, x, y):
+        """
+        Verifica se há colisão com paredes (pixels pretos) na posição (x, y).
+
+        :param x: int - Coordenada x a verificar
+        :param y: int - Coordenada y a verificar
+        :return: bool - True se houver colisão, False caso contrário
+        """
+        try:
+            # Obter a cor do pixel na posição
+            color = self.original_map.get_at((int(x), int(y)))
+        
+            # Considerar colisão se o pixel for preto (parede)
+            return (color[0], color[1], color[2]) == (0, 0, 0)  # RGB preto
+        except IndexError:
+            # Fora dos limites do mapa, considerar como colisão
+            return True
     
     def polar2cartesian(self, distance, angle):
         """
@@ -286,35 +315,46 @@ class Environment:
     def run(self):
         """Loop principal para manter a janela aberta e executar a simulação."""
         # Criar uma cópia do mapa original para referência de detecção
+        # Importante: manter o mapa original sem desenhos do carro para detecção de colisão
         self.original_map = self.map.copy()
         
         # Inicializar o carro (apenas com sensores, sem posição)
         self.car = Car(env_map=self.original_map)
         
         running = True
-
+    
         # Determinar o número de painéis de visualização com base no parâmetro
         num_panels = 3 if self.show_global_view else 2
         
         # Criar uma tela adequada para o número de painéis
         width, height = self.map.get_width(), self.map.get_height()
         combined_surface = pygame.display.set_mode((width * num_panels, height))
-
+    
         # Inicializar `infomap` como um mapa completamente preto
         self.map.fill(params.black)
         self.infomap = self.map.copy()
         
         # Limpar point cloud no início
         self.global_point_cloud = []
-
+        
+        # Desenhar uma legenda ou instruções
+        font = pygame.font.SysFont('Arial', 12)
+        controls_text = [
+            "Controles:",
+            "W - Avançar",
+            "S - Recuar",
+            "A - Girar à esquerda",
+            "D - Girar à direita"
+        ]
+    
         while running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-
+    
             # Capturar teclas pressionadas
             keys = pygame.key.get_pressed()
-
+    
             # Processar comandos do teclado
             cmd_forward = 0  # -1: trás, 0: parado, 1: frente
             cmd_turn = 0     # -1: direita, 0: reto, 1: esquerda
@@ -350,16 +390,23 @@ class Environment:
                 
                 # Atualizar a visualização
                 self.show_sensor_data()
-
+    
             # Criar cópia do mapa original para desenhar o carro
             original_with_car = self.original_map.copy()
             
             # Desenhar o carro
             self.draw_arrow(original_with_car, self.car_position, self.car_angle_rad, size=8, color=params.red)
             
+            # Desenhar instruções
+            y_offset = 10
+            for text in controls_text:
+                text_surface = font.render(text, True, params.black)
+                original_with_car.blit(text_surface, (10, y_offset))
+                y_offset += 15
+            
             # Criar visualização local
             local_view = self.create_local_view()
-
+    
             # Renderizar os painéis de visualização
             if self.show_global_view:
                 # Três painéis: mapa original, infomap e visualização local
@@ -370,12 +417,12 @@ class Environment:
                 # Dois painéis: mapa original e visualização local
                 combined_surface.blit(original_with_car, (0, 0))
                 combined_surface.blit(local_view, (width, 0))
-
+    
             # Atualizar a tela
             pygame.display.flip()
-
+    
             time.sleep(0.01)
-
+    
         pygame.quit()
     
     def draw_arrow(self, surface, position, angle, size=10, color=params.red):
