@@ -6,9 +6,19 @@ import time
 from car import Car
 
 class Environment:
-    def __init__(self, map_name, max_size=500, padding_percent=0.05):
+    def __init__(self, map_name, max_size=500, padding_percent=0.05, show_global_view=True):
+        """
+        Inicializa o ambiente de simulação.
 
+        :param map_name: str - Nome do arquivo do mapa na pasta 'tracks/'.
+        :param max_size: int - Tamanho máximo do mapa (largura ou altura).
+        :param padding_percent: float - Porcentagem do tamanho para padding.
+        :param show_global_view: bool - Se True, mostra a visão global do mapa com point cloud.
+        """
         pygame.init()
+        
+        # Parâmetros de visualização
+        self.show_global_view = show_global_view
         
         # Parâmetros de movimento (mantidos no ambiente)
         self.speed = params.default_speed
@@ -154,7 +164,7 @@ class Environment:
         
         :param sensor_data: list - Dados do sensor LIDAR.
         """
-        if sensor_data:
+        if self.show_global_view and sensor_data:
             for data_dist, data_ang, _ in sensor_data:
                 # Converter coordenadas polares para cartesianas globais
                 point = self.polar2cartesian(data_dist, data_ang)
@@ -162,12 +172,13 @@ class Environment:
     
     def show_sensor_data(self):
         """Exibe os dados dos sensores no mapa."""
-        for point in self.global_point_cloud:
-            try:
-                self.infomap.set_at((int(point[0]), int(point[1])), params.red)
-            except IndexError:
-                # Ignorar pontos que estejam fora dos limites do mapa
-                pass
+        if self.show_global_view:
+            for point in self.global_point_cloud:
+                try:
+                    self.infomap.set_at((int(point[0]), int(point[1])), params.red)
+                except IndexError:
+                    # Ignorar pontos que estejam fora dos limites do mapa
+                    pass
 
     def create_local_view(self):
         """
@@ -282,9 +293,12 @@ class Environment:
         
         running = True
 
-        # Criar uma tela com o triplo da largura para exibir três mapas lado a lado
+        # Determinar o número de painéis de visualização com base no parâmetro
+        num_panels = 3 if self.show_global_view else 2
+        
+        # Criar uma tela adequada para o número de painéis
         width, height = self.map.get_width(), self.map.get_height()
-        combined_surface = pygame.display.set_mode((width * 3, height))
+        combined_surface = pygame.display.set_mode((width * num_panels, height))
 
         # Inicializar `infomap` como um mapa completamente preto
         self.map.fill(params.black)
@@ -324,7 +338,6 @@ class Environment:
             )
             
             if moved:
-                
                 # Atualizar sensores do carro, passando posição e ângulo mantidos pelo ambiente
                 sensor_data = self.car.update_sensors(
                     self.original_map, 
@@ -347,14 +360,16 @@ class Environment:
             # Criar visualização local
             local_view = self.create_local_view()
 
-            # **Desenhar o mapa original na esquerda**
-            combined_surface.blit(original_with_car, (0, 0))
-
-            # **Desenhar o infomap no meio**
-            combined_surface.blit(self.infomap, (width, 0))
-            
-            # **Desenhar a visualização local à direita**
-            combined_surface.blit(local_view, (width * 2, 0))
+            # Renderizar os painéis de visualização
+            if self.show_global_view:
+                # Três painéis: mapa original, infomap e visualização local
+                combined_surface.blit(original_with_car, (0, 0))
+                combined_surface.blit(self.infomap, (width, 0))
+                combined_surface.blit(local_view, (width * 2, 0))
+            else:
+                # Dois painéis: mapa original e visualização local
+                combined_surface.blit(original_with_car, (0, 0))
+                combined_surface.blit(local_view, (width, 0))
 
             # Atualizar a tela
             pygame.display.flip()
