@@ -81,8 +81,8 @@ class RealCameraInterface(CameraInterface):
         
         # Initialize image displays
         img_original = ax_original.imshow(np.zeros((self.height, self.width, 3), dtype=np.uint8))
-        img_red_mask = ax_red_mask.imshow(np.zeros((self.height, self.width), dtype=np.uint8), cmap='gray')
-        img_green_mask = ax_green_mask.imshow(np.zeros((self.height, self.width), dtype=np.uint8), cmap='gray')
+        img_red_mask = ax_red_mask.imshow(np.zeros((self.height, self.width), dtype=np.uint8), cmap='Reds', vmin=0, vmax=1)  # Usando 'Reds' com vmin=0, vmax=1 para visualização binária
+        img_green_mask = ax_green_mask.imshow(np.zeros((self.height, self.width), dtype=np.uint8), cmap='Greens', vmin=0, vmax=1)  # Simplificado para vmin=0, vmax=1
         img_visualization = ax_visualization.imshow(np.zeros((self.height, self.width, 3), dtype=np.uint8))
         
         # Set titles
@@ -207,8 +207,32 @@ class RealCameraInterface(CameraInterface):
                     if processing_results:
                         # Update images in the figure
                         img_original.set_data(frame)
-                        img_red_mask.set_data(processing_results['mask_r'])
-                        img_green_mask.set_data(processing_results['mask_g'])
+                        
+                        # Certifique-se de que as máscaras estão visíveis, normalizando os valores
+                        red_mask = processing_results['mask_r']
+                        green_mask = processing_results['mask_g']
+                        
+                        # Garantir que as máscaras sejam binárias (0 e 1)
+                        # Para a máscara vermelha, vamos simplificar para um mapa binário
+                        if red_mask.max() > 1:
+                            # Se estiver em escala 0-255, normalizar para 0-1
+                            red_mask = (red_mask > 0).astype(np.uint8)
+                        else:
+                            # Se já estiver em 0-1, garantir que seja binária
+                            red_mask = (red_mask > 0).astype(np.uint8)
+                        
+                        # Para a máscara verde, mesma abordagem
+                        if green_mask.max() > 1:
+                            green_mask = (green_mask > 0).astype(np.uint8)
+                        else:
+                            green_mask = (green_mask > 0).astype(np.uint8)
+                            
+                        img_red_mask.set_data(red_mask)
+                        img_green_mask.set_data(green_mask)
+                        
+                        # Manter limites fixos para visualização binária
+                        img_red_mask.set_clim(vmin=0, vmax=1)
+                        img_green_mask.set_clim(vmin=0, vmax=1)
                         
                         # Create visualization with overlay
                         visualization = create_overlay_visualization(
@@ -235,10 +259,10 @@ class RealCameraInterface(CameraInterface):
                     import traceback
                     traceback.print_exc()
                     break
-    
+
         # Start update in the main thread (for matplotlib compatibility)
         update()
-    
+        
 if __name__ == "__main__":
     try:
         print("Starting camera debug interface...")
