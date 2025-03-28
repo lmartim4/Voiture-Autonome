@@ -41,11 +41,20 @@ def create_color_masks(frame_hsv):
     
     try:
         # Color ranges for detection
-        red_lower, red_upper = np.array([0, 150, 150]), np.array([10, 255, 255])
+        red_brighter_lower, red_brighter_upper = np.array([0, 150, 150]), np.array([10, 255, 255])
+        red_darker_lower, red_darker_upper = np.array([170, 150, 150]), np.array([180, 255, 255])
+
+        #green_brighter_lower, green_brighter_upper = np.array([50, 100, 100]), np.array([10, 255, 255])
+        #green_darker_lower, green_darker_upper = np.array([170, 150, 150]), np.array([180, 255, 255])
+
         green_lower, green_upper = np.array([50, 100, 100]), np.array([70, 255, 255])
 
         # Create masks for red and green colors
-        mask_r = cv2.inRange(frame_hsv, red_lower, red_upper)
+        
+        mask_r1 = cv2.inRange(frame_hsv, red_brighter_lower, red_brighter_upper)
+        mask_r2 = cv2.inRange(frame_hsv, red_darker_lower, red_darker_upper)
+        mask_r = cv2.bitwise_or(mask_r1, mask_r2)
+
         mask_g = cv2.inRange(frame_hsv, green_lower, green_upper)
         
         return mask_r, mask_g
