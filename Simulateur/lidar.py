@@ -4,30 +4,30 @@ import numpy as np
 class Lidar:
     def __init__(self, max_range, scan_speed, uncertainty):
         """
-        Inicializa o sensor LIDAR.
+        Initializes the LIDAR sensor.
         
-        :param max_range: int - Alcance máximo do LIDAR em pixels
-        :param scan_speed: int - Velocidade de scan (não usado atualmente)
-        :param uncertainty: tuple - Incerteza do LIDAR em (distância, ângulo)
+        :param max_range: int - Maximum range of the LIDAR in pixels
+        :param scan_speed: int - Scan speed (not currently used)
+        :param uncertainty: tuple - LIDAR uncertainty in (distance, angle)
         """
-        # Parâmetros do LIDAR
+        # LIDAR parameters
         self.max_range = max_range
-        self.scan_speed = scan_speed  # Não usado, mas mantido para compatibilidade
+        self.scan_speed = scan_speed  # Not used, but kept for compatibility
         
-        # Parâmetros de incerteza
+        # Uncertainty parameters
         self.uncertainty = np.array(uncertainty)
         
-        # Configurações de varredura
-        self.angular_resolution = 60  # Número de amostras por varredura
-        self.interpolation_steps = 100  # Número de passos para ray casting
+        # Scan settings
+        self.angular_resolution = 60  # Number of samples per scan
+        self.interpolation_steps = 100  # Number of steps for ray casting
     
     def distance(self, point1, point2):
         """
-        Calcula a distância euclidiana entre dois pontos.
+        Calculates the Euclidean distance between two points.
         
-        :param point1: tuple - Coordenadas (x, y) do primeiro ponto
-        :param point2: tuple - Coordenadas (x, y) do segundo ponto
-        :return: float - Distância entre os pontos
+        :param point1: tuple - Coordinates (x, y) of the first point
+        :param point2: tuple - Coordinates (x, y) of the second point
+        :return: float - Distance between points
         """
         px = point2[0] - point1[0]
         py = point2[1] - point1[1]
@@ -35,75 +35,75 @@ class Lidar:
     
     def add_uncertainty(self, distance, angle):
         """
-        Adiciona incerteza aos valores de distância e ângulo.
+        Adds uncertainty to distance and angle values.
         
-        :param distance: float - Distância medida
-        :param angle: float - Ângulo medido em radianos
-        :return: list - [distância com ruído, ângulo com ruído]
+        :param distance: float - Measured distance
+        :param angle: float - Measured angle in radians
+        :return: list - [distance with noise, angle with noise]
         """
         mean = np.array([distance, angle])
         covariance = np.diag(self.uncertainty ** 2)
         
-        # Adicionar ruído gaussiano
+        # Add Gaussian noise
         distance, angle = np.random.multivariate_normal(mean, covariance)
         
-        # Garantir distância positiva
+        # Ensure positive distance
         distance = max(distance, 0)
         
         return [distance, angle]
     
     def sense_obstacles(self, env_map, car_position, car_angle):
         """
-        Detecta obstáculos usando ray casting a partir da posição e ângulo fornecidos.
+        Detects obstacles using ray casting from given position and angle.
         
-        :param env_map: pygame.Surface - Mapa do ambiente para detecção
-        :param car_position: tuple/list - Posição (x, y) do carro no mapa
-        :param car_angle: float - Ângulo do carro em radianos
-        :return: list - Lista de medições [distância, ângulo, posição] ou False se vazio
+        :param env_map: pygame.Surface - Environment map for detection
+        :param car_position: tuple/list - Car position (x, y) on the map
+        :param car_angle: float - Car angle in radians
+        :return: list - List of measurements [distance, angle, position] or False if empty
         """
-        # Obter dimensões do mapa
+        # Get map dimensions
         map_width, map_height = env_map.get_width(), env_map.get_height()
         
         data = []
         x_global, y_global = car_position
 
-        # Scan em um arco de -90° a +90° em frente ao carro
+        # Scan in an arc from -90° to +90° in front of the car
         for angle in np.linspace(-np.pi/2, np.pi/2, self.angular_resolution, False):
-            # Ângulo global do raio
+            # Global ray angle
             angle_scan = car_angle + angle
             
-            # Ponto final do raio (considerando alcance máximo)
+            # Ray endpoint (considering maximum range)
             x_scan = x_global + self.max_range * np.cos(angle_scan)
             y_scan = y_global - self.max_range * np.sin(angle_scan)
 
-            # Ray casting - interpolação linear entre a posição do carro e o ponto final
+            # Ray casting - linear interpolation between car position and endpoint
             for i in range(0, self.interpolation_steps):
-                # Interpolação linear
+                # Linear interpolation
                 u = i / self.interpolation_steps
                 x = int(u * x_scan + (1-u) * x_global)
                 y = int(u * y_scan + (1-u) * y_global)
 
-                # Verificar se o ponto está dentro dos limites do mapa
+                # Check if point is within map boundaries
                 if 0 <= x < map_width and 0 <= y < map_height:
-                    # Verificar se o ponto é um obstáculo (pixel preto)
+                    # Check if point is an obstacle (black pixel)
                     color = env_map.get_at((x, y))
                     
-                    # Considerar obstáculo se pixel for preto
-                    if (color[0], color[1], color[2]) == (0, 0, 0):  # Preto
-                        # Calcular distância até o obstáculo
+                    # Consider obstacle if pixel is black
+                    if (color[0], color[1], color[2]) == (0, 0, 0):  # Black
+                        # Calculate distance to obstacle
                         distance = self.distance((x_global, y_global), (x, y))
                         
-                        # Adicionar incerteza às medições
+                        # Add uncertainty to measurements
                         output = self.add_uncertainty(distance, angle_scan)
                         
-                        # Adicionar posição de origem para referência (usada pelo ambiente)
+                        # Add origin position for reference (used by environment)
                         output.append(car_position)
                         
-                        # Adicionar à lista de dados
+                        # Add to data list
                         data.append(output)
                         
-                        # Parar o ray casting deste ângulo, já encontrou obstáculo
+                        # Stop ray casting at this angle, already found obstacle
                         break
         
-        # Retornar dados se existirem, False caso contrário
+        # Return data if it exists, False otherwise
         return data if len(data) > 0 else False

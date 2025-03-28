@@ -8,93 +8,93 @@ from car import Car
 class Environment:
     def __init__(self, map_name, max_size=500, padding_percent=0.05, show_global_view=True):
         """
-        Inicializa o ambiente de simulação.
+        Initializes the simulation environment.
 
-        :param map_name: str - Nome do arquivo do mapa na pasta 'tracks/'.
-        :param max_size: int - Tamanho máximo do mapa (largura ou altura).
-        :param padding_percent: float - Porcentagem do tamanho para padding.
-        :param show_global_view: bool - Se True, mostra a visão global do mapa com point cloud.
+        :param map_name: str - Name of the map file inside 'tracks/' folder.
+        :param max_size: int - Maximum size (either width or height).
+        :param padding_percent: float - Percentage of max_size to be used as padding.
+        :param show_global_view: bool - If True, shows global view map with point cloud.
         """
         pygame.init()
         
-        # Parâmetros de visualização
+        # Visualization parameters
         self.show_global_view = show_global_view
         
-        # Parâmetros de movimento (mantidos no ambiente)
+        # Movement parameters (kept in the environment)
         self.speed = params.default_speed
         self.rotation_speed = np.deg2rad(params.default_rotation_speed)
         
-        # Posição e ângulo do carro (mantidos no ambiente)
-        self.car_position = [0, 0]  # Será atualizada após carregar metadados
-        self.car_angle_rad = 0      # Será atualizada após carregar metadados
+        # Car position and angle (kept in the environment)
+        self.car_position = [0, 0]  # Will be updated after loading metadata
+        self.car_angle_rad = 0      # Will be updated after loading metadata
         
-        # Point cloud do ambiente (pontos detectados em coordenadas globais)
+        # Environment point cloud (detected points in global coordinates)
         self.global_point_cloud = []
         
-        # Carregar mapa externo
+        # Load external map
         self.external_map = pygame.image.load(f'tracks/{map_name}')
         
-        # Carregar posição inicial dos metadados
+        # Load starting position from metadata
         self.load_metadata(map_name)
         
-        # Formatar o mapa
+        # Format the map
         self.format_map(map_name, max_size, padding_percent)
         
-        # Inicializar o carro (sem posição, apenas com sensores)
-        self.car = None  # Será inicializado após a criação do mapa original
+        # Initialize the car (sensors only, no position)
+        self.car = None  # Will be initialized after creating the original map
         
     def format_map(self, map_name, max_size, padding_percent):
         """
-        Formata o mapa para exibição na tela.
+        Formats the map for display on screen.
         
-        :param map_name: str - Nome do arquivo do mapa.
-        :param max_size: int - Tamanho máximo.
-        :param padding_percent: float - Porcentagem de padding.
+        :param map_name: str - Map file name.
+        :param max_size: int - Maximum size.
+        :param padding_percent: float - Padding percentage.
         """
-        # Dimensões originais
+        # Original dimensions
         self.map_width, self.map_height = self.external_map.get_width(), self.external_map.get_height()
 
-        # Calcular fator de escala mantendo a proporção
+        # Calculate scale factor while keeping aspect ratio
         scale_factor = min(max_size / self.map_width, max_size / self.map_height)
 
-        # Calcular novas dimensões após escala
+        # Calculate new dimensions after scaling
         new_width, new_height = int(self.map_width * scale_factor), int(self.map_height * scale_factor)
 
-        # Calcular padding com base no tamanho máximo e na porcentagem dada
+        # Calculate padding based on max_size and the given percentage
         padding = int(max_size * padding_percent)
 
-        # Calcular dimensões finais da janela incluindo padding
+        # Calculate final window dimensions including padding
         final_width = new_width + 2 * padding
         final_height = new_height + 2 * padding
         
-        # Armazenar dimensões para uso posterior
+        # Store dimensions for later use
         self.view_width = final_width
         self.view_height = final_height
         
-        # Ajustar posição inicial com escala e padding
+        # Adjust starting position with scale and padding
         self.car_position = [int(self.start_x * scale_factor + padding), int(self.start_y * scale_factor + padding)]
         self.car_angle_rad = np.deg2rad(self.start_orientation)
 
-        # Criar janela
+        # Create window
         pygame.display.set_caption(f"Simulation - Map: {map_name}")
         self.map = pygame.display.set_mode((final_width, final_height))
 
-        # Preencher background com branco
+        # Fill background with white
         self.map.fill(params.white)
 
-        # Calcular posição para centralizar a imagem com padding
+        # Calculate position to center the image with padding
         x_offset = (final_width - new_width) // 2
         y_offset = (final_height - new_height) // 2
 
-        # Redimensionar a imagem e desenhá-la na tela
+        # Scale the image and draw it on the screen
         self.external_map = pygame.transform.scale(self.external_map, (new_width, new_height))
         self.map.blit(self.external_map, (x_offset, y_offset))
 
     def load_metadata(self, map_name):
         """
-        Carrega a posição inicial dos metadados.
+        Loads starting position from metadata.
         
-        :param map_name: str - Nome do arquivo do mapa.
+        :param map_name: str - Map file name.
         """
         metadata_path = os.path.join("tracks", f"{map_name.split('.')[0]}_metadata.txt")
         self.start_x, self.start_y, self.start_orientation = None, None, None
@@ -115,73 +115,153 @@ class Environment:
     
     def move_car(self, cmd_forward, cmd_turn, map_width, map_height):
         """
-        Move o carro com base nos comandos e limites do mapa.
-        Verifica colisões com paredes (tratando o carro como um ponto).
+        Moves the car based on commands and map limits.
+        Checks collisions with walls treating the car as a rectangle.
 
-        :param cmd_forward: int - Comando de movimento para frente/trás (-1, 0, 1)
-        :param cmd_turn: int - Comando de rotação para esquerda/direita (-1, 0, 1)
-        :param map_width: int - Largura do mapa para limites
-        :param map_height: int - Altura do mapa para limites
-        :return: bool - True se houve movimento, False caso contrário
+        :param cmd_forward: int - Movement command forward/backward (-1, 0, 1)
+        :param cmd_turn: int - Rotation command left/right (-1, 0, 1)
+        :param map_width: int - Map width for boundaries
+        :param map_height: int - Map height for boundaries
+        :return: bool - True if movement occurred, False otherwise
         """
-        # Flag para rastrear se houve movimento
+        # Flag to track if movement occurred
         has_moved = False
 
-        # Armazenar posição atual para restaurar em caso de colisão
+        # Store current position and angle to restore in case of collision
         original_position = self.car_position.copy()
+        original_angle = self.car_angle_rad
 
-        # Atualizar ângulo
+        # Handle rotation first - always allow rotation even when stuck
         if cmd_turn != 0:
-            self.car_angle_rad += cmd_turn * self.rotation_speed
-            has_moved = True
+            new_angle = self.car_angle_rad + cmd_turn * self.rotation_speed
+            
+            # Store current position and angle
+            temp_pos = self.car_position.copy()
+            temp_angle = self.car_angle_rad
+            
+            # Try rotating without moving
+            self.car_angle_rad = new_angle
+            
+            # Check if rotation alone causes collision
+            if self.check_rectangle_collision():
+                # If rotating in place causes collision, try small backup to free the car
+                backup_distance = 2.0  # Small backup distance
+                
+                # Try backing up slightly in the opposite direction
+                backup_x = temp_pos[0] - cmd_forward * np.cos(temp_angle) * backup_distance
+                backup_y = temp_pos[1] + cmd_forward * np.sin(temp_angle) * backup_distance
+                
+                self.car_position = [backup_x, backup_y]
+                
+                # If still colliding, restore original values
+                if self.check_rectangle_collision():
+                    self.car_position = temp_pos
+                    self.car_angle_rad = temp_angle
+                else:
+                    has_moved = True
+            else:
+                has_moved = True
 
-        # Atualizar posição
+        # Update position
         if cmd_forward != 0:
-            # Calcular nova posição com base na direção e velocidade
-            new_x = int(self.car_position[0] + cmd_forward * np.cos(self.car_angle_rad) * self.speed)
-            new_y = int(self.car_position[1] - cmd_forward * np.sin(self.car_angle_rad) * self.speed)
+            # Calculate new position based on direction and speed
+            new_x = self.car_position[0] + cmd_forward * np.cos(self.car_angle_rad) * self.speed
+            new_y = self.car_position[1] - cmd_forward * np.sin(self.car_angle_rad) * self.speed
 
-            # Limitar a posição ao tamanho do mapa
+            # Limit position to map size
             if map_width > 0 and map_height > 0:
                 new_x = max(0, min(new_x, map_width - 1))
                 new_y = max(0, min(new_y, map_height - 1))
 
-            # Verificar colisão com paredes (obstáculos pretos)
-            if self.check_collision(new_x, new_y):
-                # Colisão detectada, restaurar posição original
-                self.car_position = original_position
+            # Store position before moving
+            temp_pos = self.car_position.copy()
+            
+            # Update position temporarily
+            self.car_position = [new_x, new_y]
+            
+            # Check collision with walls considering car dimensions
+            if self.check_rectangle_collision():
+                # Collision detected, restore original position
+                self.car_position = temp_pos
+                
+                # Try to slide along walls (wall following behavior)
+                # Try moving only in X direction
+                self.car_position = [new_x, temp_pos[1]]
+                if not self.check_rectangle_collision():
+                    has_moved = True
+                else:
+                    # If X movement fails, restore and try Y movement
+                    self.car_position = [temp_pos[0], new_y]
+                    if not self.check_rectangle_collision():
+                        has_moved = True
+                    else:
+                        # If both fail, completely restore position
+                        self.car_position = temp_pos
             else:
-                # Sem colisão, atualizar posição
-                self.car_position = [new_x, new_y]
+                # No collision, movement successful
                 has_moved = True
 
         return has_moved
 
+    def check_rectangle_collision(self):
+        """
+        Checks if the car collides with walls (black pixels) considering its rectangular shape.
+        
+        :return: bool - True if collision detected, False otherwise
+        """
+        # Get car corners in global coordinates
+        corners = self.car.get_corners(self.car_position, self.car_angle_rad)
+        
+        # Check perimeter points
+        num_perimeter_points = 20  # Number of points to check around perimeter
+        
+        # Check each corner for collision
+        for corner in corners:
+            if self.check_collision(int(corner[0]), int(corner[1])):
+                return True
+        
+        # Check additional points along the perimeter
+        for i in range(len(corners)):
+            start = corners[i]
+            end = corners[(i + 1) % len(corners)]  # Wrap around to first corner
+            
+            for j in range(1, num_perimeter_points - 1):
+                # Interpolate between corners
+                t = j / (num_perimeter_points - 1)
+                point_x = int(start[0] * (1 - t) + end[0] * t)
+                point_y = int(start[1] * (1 - t) + end[1] * t)
+                
+                if self.check_collision(point_x, point_y):
+                    return True
+        
+        # No collision detected
+        return False
+
     def check_collision(self, x, y):
         """
-        Verifica se há colisão com paredes (pixels pretos) na posição (x, y).
+        Checks if there's a collision with walls (black pixels) at position (x, y).
 
-        :param x: int - Coordenada x a verificar
-        :param y: int - Coordenada y a verificar
-        :return: bool - True se houver colisão, False caso contrário
+        :param x: int - X coordinate to check
+        :param y: int - Y coordinate to check
+        :return: bool - True if collision, False otherwise
         """
         try:
-            # Obter a cor do pixel na posição
+            # Get pixel color at position
             color = self.original_map.get_at((int(x), int(y)))
         
-            # Considerar colisão se o pixel for preto (parede)
-            return (color[0], color[1], color[2]) == (0, 0, 0)  # RGB preto
+            # Consider collision if pixel is black (wall)
+            return (color[0], color[1], color[2]) == (0, 0, 0)  # RGB black
         except IndexError:
-            # Fora dos limites do mapa, considerar como colisão
+            # Out of map bounds, consider as collision
             return True
     
     def polar2cartesian(self, distance, angle):
         """
-        Converte coordenadas polares para cartesianas no sistema global.
+        Converts polar coordinates to Cartesian in the global system.
         
-        :param distance: float - Distância do ponto
-        :param angle: float - Ângulo global do ponto em radianos
-        :return: tuple - Coordenadas (x, y) no sistema global
+        :param distance: float - Distance of the point
+        :param angle: float - Global angle in radians
+        :return: tuple - Coordinates (x, y) in global system
         """
         x = int(distance * np.cos(angle) + self.car_position[0])
         y = int(-distance * np.sin(angle) + self.car_position[1])
@@ -189,55 +269,55 @@ class Environment:
     
     def data_storage(self, sensor_data):
         """
-        Armazena os dados do sensor em coordenadas globais.
+        Stores sensor data in global coordinates.
         
-        :param sensor_data: list - Dados do sensor LIDAR.
+        :param sensor_data: list - LIDAR sensor data.
         """
         if self.show_global_view and sensor_data:
             for data_dist, data_ang, _ in sensor_data:
-                # Converter coordenadas polares para cartesianas globais
+                # Convert polar coordinates to global Cartesian
                 point = self.polar2cartesian(data_dist, data_ang)
                 self.global_point_cloud.append(point)
     
     def show_sensor_data(self):
-        """Exibe os dados dos sensores no mapa."""
+        """Displays sensor data on the map."""
         if self.show_global_view:
             for point in self.global_point_cloud:
                 try:
                     self.infomap.set_at((int(point[0]), int(point[1])), params.red)
                 except IndexError:
-                    # Ignorar pontos que estejam fora dos limites do mapa
+                    # Ignore points outside map boundaries
                     pass
 
     def create_local_view(self):
         """
-        Cria uma visualização local da point cloud alinhada com a frente do carro.
-        A frente do carro sempre aponta para cima na visualização local.
+        Creates a local view of the point cloud aligned with the front of the car.
+        The front of the car always points upward in the local view.
         
-        :return: pygame.Surface - Superfície com a visualização local.
+        :return: pygame.Surface - Surface with local visualization
         """
-        # Criar uma superfície do mesmo tamanho que as outras visualizações
+        # Create a surface of the same size as other views
         local_view = pygame.Surface((self.view_width, self.view_height))
         local_view.fill(params.black)
         
-        # Definir o centro da visualização
+        # Define center of visualization
         center_x = self.view_width // 2
         center_y = self.view_height // 2
         
-        # Desenhar grid de referência
-        grid_size = 40  # Tamanho das células da grade
+        # Draw reference grid
+        grid_size = 40  # Size of grid cells
         grid_lines = max(self.view_width, self.view_height) // grid_size + 1
         
-        # Linhas de grade
+        # Grid lines
         for i in range(-grid_lines // 2, grid_lines // 2 + 1):
-            # Linhas horizontais
+            # Horizontal lines
             pygame.draw.line(
                 local_view, params.gray, 
                 (0, center_y + i * grid_size), 
                 (self.view_width, center_y + i * grid_size), 
                 1
             )
-            # Linhas verticais
+            # Vertical lines
             pygame.draw.line(
                 local_view, params.gray, 
                 (center_x + i * grid_size, 0), 
@@ -245,48 +325,65 @@ class Environment:
                 1
             )
         
-        # Linhas de centro (representam os eixos x e y) - mais espessas
+        # Center lines (representing x and y axes) - thicker
         pygame.draw.line(local_view, params.white, (0, center_y), (self.view_width, center_y), 2)
         pygame.draw.line(local_view, params.white, (center_x, 0), (center_x, self.view_height), 2)
         
-        # Desenhar o veículo no centro (um pequeno triângulo apontando para cima)
-        vehicle_size = 10
-        vehicle_points = [
-            (center_x, center_y - vehicle_size),  # Ponta (frente do carro)
-            (center_x - vehicle_size, center_y + vehicle_size),  # Traseira esquerda
-            (center_x + vehicle_size, center_y + vehicle_size)   # Traseira direita
-        ]
-        pygame.draw.polygon(local_view, params.green, vehicle_points)
+        # Draw the vehicle at the center (a rectangle)
+        car_width = self.car.width
+        car_height = self.car.height
+        vehicle_rect = pygame.Rect(
+            center_x - car_width // 2, 
+            center_y - car_height // 2,
+            car_width, 
+            car_height
+        )
+        pygame.draw.rect(local_view, params.green, vehicle_rect)
         
-        # Desenhar círculos concêntricos para indicar distância
+        # Draw a triangle to indicate front of the car
+        pygame.draw.polygon(
+            local_view, 
+            params.blue, 
+            [
+                (center_x, center_y - car_height // 2 - 5),  # Front tip
+                (center_x - 5, center_y - car_height // 2),  # Left corner
+                (center_x + 5, center_y - car_height // 2)   # Right corner
+            ]
+        )
+        
+        # Draw concentric circles to indicate distance
         for radius in range(grid_size, 6 * grid_size, grid_size):
             pygame.draw.circle(local_view, params.dark_gray, (center_x, center_y), radius, 1)
         
-        # Obter point cloud local do carro
+        # Get car's local point cloud
         local_points = self.car.get_local_point_cloud()
         
-        # Desenhar os pontos da point cloud - CORREÇÃO:
-        # A transformação para a visualização na tela:
-        # 1. Na point cloud local: x+ é para frente, y+ é para esquerda
-        # 2. Na visualização: para cima é frente do carro (-y na tela), direita é direita do carro (+x na tela)
-        scale_factor = 1.4  # Ajuste para visualização
+        # Draw the point cloud - CORRECTION:
+        # Transformation to screen coordinates:
+        # 1. In local point cloud: x+ is forward, y+ is left
+        # 2. In visualization: up is car's front (-y on screen), right is car's right (+x on screen)
+        scale_factor = 1.4  # Visualization adjustment
         for local_x, local_y in local_points:
-            # Transformar coordenadas para a visualização:
-            # O eixo x da point cloud (frente) mapeia para -y na tela (para cima)
-            # O eixo y da point cloud (esquerda) mapeia para -x na tela (para esquerda)
-            screen_x = int(center_x - local_y * scale_factor)  # Invertido para corrigir o espelhamento
-            screen_y = int(center_y - local_x * scale_factor)  # Frente sempre para cima
+            # Transform coordinates for visualization:
+            # Point cloud x-axis (forward) maps to -y on screen (upward)
+            # Point cloud y-axis (left) maps to -x on screen (left)
+            screen_x = int(center_x - local_y * scale_factor)  # Inverted to fix mirroring
+            screen_y = int(center_y - local_x * scale_factor)  # Front always upward
             
             if 0 <= screen_x < self.view_width and 0 <= screen_y < self.view_height:
-                # Desenhar um pequeno círculo para melhorar a visibilidade
+                # Draw a small circle for better visibility
                 pygame.draw.circle(local_view, params.red, (screen_x, screen_y), 2)
         
-        # Desenhar informação de ângulo atual na tela
+        # Display current angle on screen
         font = pygame.font.SysFont('Arial', 14)
-        angle_text = font.render(f"Ângulo: {np.rad2deg(self.car_angle_rad):.2f}°", True, params.white)
+        angle_text = font.render(f"Angle: {np.rad2deg(self.car_angle_rad):.2f}°", True, params.white)
         local_view.blit(angle_text, (10, 10))
         
-        # Identificar direções cardeais para facilitar a orientação
+        # Display car dimensions on screen
+        dimensions_text = font.render(f"Car: {self.car.width}x{self.car.height} px", True, params.white)
+        local_view.blit(dimensions_text, (10, 30))
+        
+        # Identify cardinal directions for easier orientation
         directions = [
             {"text": "Front", "pos": (center_x, 10), "anchor": "center"},
             {"text": "Back", "pos": (center_x, self.view_height - 20), "anchor": "center"},
@@ -313,38 +410,38 @@ class Environment:
         return local_view
 
     def run(self):
-        """Loop principal para manter a janela aberta e executar a simulação."""
-        # Criar uma cópia do mapa original para referência de detecção
-        # Importante: manter o mapa original sem desenhos do carro para detecção de colisão
+        """Main loop to keep the window open and run the simulation."""
+        # Create a copy of the original map for collision detection
+        # Important: keep the original map without car drawings for collision detection
         self.original_map = self.map.copy()
         
-        # Inicializar o carro (apenas com sensores, sem posição)
-        self.car = Car(env_map=self.original_map)
+        # Initialize the car (with dimensions)
+        self.car = Car(env_map=self.original_map, width=10, height=20)
         
         running = True
     
-        # Determinar o número de painéis de visualização com base no parâmetro
+        # Determine the number of visualization panels based on parameter
         num_panels = 3 if self.show_global_view else 2
         
-        # Criar uma tela adequada para o número de painéis
+        # Create a screen suitable for the number of panels
         width, height = self.map.get_width(), self.map.get_height()
         combined_surface = pygame.display.set_mode((width * num_panels, height))
     
-        # Inicializar `infomap` como um mapa completamente preto
+        # Initialize `infomap` as a completely black map
         self.map.fill(params.black)
         self.infomap = self.map.copy()
         
-        # Limpar point cloud no início
+        # Clear point cloud at start
         self.global_point_cloud = []
         
-        # Desenhar uma legenda ou instruções
+        # Draw a legend or instructions
         font = pygame.font.SysFont('Arial', 12)
         controls_text = [
-            "Controles:",
-            "W - Avançar",
-            "S - Recuar",
-            "A - Girar à esquerda",
-            "D - Girar à direita"
+            "Controls:",
+            "W - Move forward",
+            "S - Move backward",
+            "A - Turn left",
+            "D - Turn right"
         ]
     
         while running:
@@ -352,12 +449,12 @@ class Environment:
                 if event.type == pygame.QUIT:
                     running = False
     
-            # Capturar teclas pressionadas
+            # Capture pressed keys
             keys = pygame.key.get_pressed()
     
-            # Processar comandos do teclado
-            cmd_forward = 0  # -1: trás, 0: parado, 1: frente
-            cmd_turn = 0     # -1: direita, 0: reto, 1: esquerda
+            # Process keyboard commands
+            cmd_forward = 0  # -1: backward, 0: stopped, 1: forward
+            cmd_turn = 0     # -1: right, 0: straight, 1: left
             
             if keys[pygame.K_w]:
                 cmd_forward = 1
@@ -365,11 +462,11 @@ class Environment:
                 cmd_forward = -1
                 
             if keys[pygame.K_a]:
-                cmd_turn = 1  # Esquerda (anti-horário)
+                cmd_turn = 1  # Left (counter-clockwise)
             elif keys[pygame.K_d]:
-                cmd_turn = -1  # Direita (horário)
+                cmd_turn = -1  # Right (clockwise)
             
-            # O ambiente move o carro com base nos comandos
+            # Environment moves the car based on commands
             moved = self.move_car(
                 cmd_forward=cmd_forward, 
                 cmd_turn=cmd_turn,
@@ -378,72 +475,98 @@ class Environment:
             )
             
             if moved:
-                # Atualizar sensores do carro, passando posição e ângulo mantidos pelo ambiente
+                # Update car sensors, passing position and angle maintained by environment
                 sensor_data = self.car.update_sensors(
                     self.original_map, 
                     self.car_position, 
                     self.car_angle_rad
                 )
                 
-                # Armazenar dados em coordenadas globais para visualização
+                # Store data in global coordinates for visualization
                 self.data_storage(sensor_data)
                 
-                # Atualizar a visualização
+                # Update visualization
                 self.show_sensor_data()
     
-            # Criar cópia do mapa original para desenhar o carro
+            # Create copy of original map to draw the car
             original_with_car = self.original_map.copy()
             
-            # Desenhar o carro
-            self.draw_arrow(original_with_car, self.car_position, self.car_angle_rad, size=8, color=params.red)
+            # Draw the car as a rectangle
+            self.draw_car_rectangle(original_with_car, self.car_position, self.car_angle_rad, self.car.width, self.car.height)
             
-            # Desenhar instruções
+            # Draw instructions
             y_offset = 10
             for text in controls_text:
                 text_surface = font.render(text, True, params.black)
                 original_with_car.blit(text_surface, (10, y_offset))
                 y_offset += 15
             
-            # Criar visualização local
+            # Create local view
             local_view = self.create_local_view()
     
-            # Renderizar os painéis de visualização
+            # Render visualization panels
             if self.show_global_view:
-                # Três painéis: mapa original, infomap e visualização local
+                # Three panels: original map, infomap and local view
                 combined_surface.blit(original_with_car, (0, 0))
                 combined_surface.blit(self.infomap, (width, 0))
                 combined_surface.blit(local_view, (width * 2, 0))
             else:
-                # Dois painéis: mapa original e visualização local
+                # Two panels: original map and local view
                 combined_surface.blit(original_with_car, (0, 0))
                 combined_surface.blit(local_view, (width, 0))
     
-            # Atualizar a tela
+            # Update screen
             pygame.display.flip()
     
             time.sleep(0.01)
     
         pygame.quit()
     
+    def draw_car_rectangle(self, surface, position, angle, width, height, color=params.red):
+        """
+        Draws the car as a rectangle with orientation at the specified position.
+        
+        :param surface: pygame.Surface - Surface to draw the car on.
+        :param position: tuple - (x, y) Center position of the car.
+        :param angle: float - Rotation angle of the car in radians.
+        :param width: int - Width of the car.
+        :param height: int - Height of the car.
+        :param color: tuple - Color of the car (RGB).
+        """
+        # Get corners using the car's method
+        corners = self.car.get_corners(position, angle)
+        
+        # Draw rectangle
+        pygame.draw.polygon(surface, color, corners)
+        
+        # Draw a small triangle at the front to indicate direction
+        front_center = ((corners[0][0] + corners[1][0]) / 2, (corners[0][1] + corners[1][1]) / 2)
+        direction_indicator = [
+            front_center,  # Front center
+            (corners[0][0], corners[0][1]),  # Front-right
+            (corners[1][0], corners[1][1])   # Front-left
+        ]
+        pygame.draw.polygon(surface, params.blue, direction_indicator)
+    
     def draw_arrow(self, surface, position, angle, size=10, color=params.red):
         """
-        Desenha uma seta na posição e orientação especificadas.
+        Draws an arrow at the specified position and orientation.
         
-        :param surface: pygame.Surface - Superfície onde desenhar a seta.
-        :param position: tuple - (x, y) Posição central da seta.
-        :param angle: float - Ângulo de rotação da seta em radianos.
-        :param size: int - Tamanho da seta.
-        :param color: tuple - Cor da seta (RGB).
+        :param surface: pygame.Surface - Surface to draw the arrow on.
+        :param position: tuple - (x, y) Center position of the arrow.
+        :param angle: float - Rotation angle of the arrow in radians.
+        :param size: int - Size of the arrow.
+        :param color: tuple - Color of the arrow (RGB).
         """
         x, y = position
         cos_a, sin_a = np.cos(angle), np.sin(angle)
 
-        # Ponto da frente da seta
+        # Front point of the arrow
         tip = (x + 1.5*size * cos_a, y - 1.5*size * sin_a)
 
-        # Pontos traseiros da seta (esquerda e direita)
+        # Rear points of the arrow (left and right)
         left = (x - 0.5*size * cos_a + 0.5*size * sin_a, y + 0.5*size * sin_a + 0.5*size * cos_a)
         right = (x - 0.5*size * cos_a - 0.5*size * sin_a, y + 0.5*size * sin_a - 0.5*size * cos_a)
 
-        # Desenhar um triângulo representando a seta
+        # Draw a triangle representing the arrow
         pygame.draw.polygon(surface, color, [tip, left, right])
