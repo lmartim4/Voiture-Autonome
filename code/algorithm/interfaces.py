@@ -3,6 +3,7 @@ import cv2
 from picamera2 import Picamera2
 from abc import ABC, abstractmethod
 from typing import List, Tuple
+from enum import Enum
 
 class LiDarInterface(ABC):
     @abstractmethod
@@ -28,7 +29,6 @@ class BatteryInterface(ABC):
         """Returns the current battery voltage."""
         pass
 
-
 class CameraInterface(ABC):
     @abstractmethod
     def get_camera_frame(self) -> np.ndarray:
@@ -36,17 +36,8 @@ class CameraInterface(ABC):
         pass
     
     @abstractmethod
-    def process_stream(self):
-        """
-        Processes the camera stream and returns detection results.
-        
-        Returns:
-            tuple: (avg_red_x, avg_green_x, red_ratio, green_ratio)
-                - avg_red_x: Average x-position of red pixels, or -1 if none detected
-                - avg_green_x: Average x-position of green pixels, or -1 if none detected
-                - red_ratio: Ratio of red pixels to total frame size
-                - green_ratio: Ratio of green pixels to total frame size
-        """
+    def get_resolution(self) -> tuple[int, int]:
+        """Returns the camera resolution as (width, height)."""
         pass
 
 class SteerInterface(ABC):

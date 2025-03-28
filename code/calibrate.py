@@ -3,7 +3,7 @@ import time
 from typing import Any, Union
 from customtkinter import *
 from algorithm.constants import *
-from code.PWM import *
+from code.raspberry_pwm import PWM
 
 set_appearance_mode("Dark")
 
@@ -248,7 +248,8 @@ speed_pwm.stop()
 
 cfg["DC_STEER_MIN"] = parameters["steer"]["min"]
 cfg["DC_STEER_MAX"] = parameters["steer"]["max"]
-cfg["ESC_DC_MIN"] = parameters["speed"]["min"]
-cfg["ESC_DC_MAX"] = parameters["speed"]["max"]
+
+# cfg["ESC_DC_MIN"] = parameters["speed"]["min"]
+# cfg["ESC_DC_MAX"] = parameters["speed"]["max"]
 
 save_config(cfg)

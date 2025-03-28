@@ -1,13 +1,12 @@
 import time
-import numpy as np
 import cv2
 import os
 import datetime
 from algorithm.interfaces import *
 from algorithm.constants import HITBOX_H1, HITBOX_H2, HITBOX_W
-from algorithm.control_camera import check_reversed_camera, reversing_direction
+from algorithm.control_camera import extract_info
 from algorithm.control_direction import compute_steer_from_lidar, shrink_space
-
+    
 class VoitureAlgorithm:
     def __init__(self, 
                  lidar: LiDarInterface, 
@@ -45,7 +44,10 @@ class VoitureAlgorithm:
         self.steer = steer
         self.motor = motor
         self.console = console
-    
+
+        avg_r, avg_g, count_r, count_g, detection_status, processing_results = extract_info(self.camera.get_camera_frame(), *self.camera.get_resolution())
+        print(detection_status)
+            
     def detect_wheel_stopped_collision(self):
         """
         Monitors for wheel stoppage while motor is running, indicating a collision.
@@ -69,19 +71,16 @@ class VoitureAlgorithm:
             # If wheels have been stopped for longer than the threshold
             elif (current_time - self._wheel_stopped_start_time) > COLLISION_TIME_THRESHOLD and not self._collision_detected:
                 self._collision_detected = True
-                self.on_detect_colision_wheel_stopped()
-                self.console.print_to_console(f"COLLISION DETECTED - Wheels stopped for {COLLISION_TIME_THRESHOLD*1000:.0f}ms while motor running")
+                self.simple_marche_arrire()
+                self.console.print_to_console(f"&c&l[COLLISION DETECTED] &e- Wheels stopped for &f{COLLISION_TIME_THRESHOLD*1000:.0f}ms &ewhile motor running")
         else:
             # Reset the timer if wheels are moving or motor is stopped
             if hasattr(self, '_wheel_stopped_start_time'):
                 delattr(self, '_wheel_stopped_start_time')
                 self._collision_detected = False
     
-    def on_detect_colision_wheel_stopped(self):
-        fator_de_giro = 30 # graus
-        cor_da_foto = -1 # 1 = FOTO VERDE, -1 = FOTO VERMELHA
-        
-        self.steer.set_steering_angle(cor_da_foto*fator_de_giro)
+    def simple_marche_arrire(self):        
+        self.steer.set_steering_angle(-30)
         self.motor.set_speed(-1.2)
         time.sleep(1)
         self.motor.set_speed(0)
@@ -99,31 +98,6 @@ class VoitureAlgorithm:
             print("Detectado")
             self.on_blocked_by_wheel()
             
-        
-        
-        if check_reversed_camera(self.camera):
-            self.console.print_to_console("Inversion d'orientation détectée !")
-            # Captura o frame atual
-            frame = self.camera.get_camera_frame()
-
-            if frame is not None:
-                # Criar pasta se não existir
-                save_dir = "imagens_reverso"
-                if not os.path.exists(save_dir):
-                    os.makedirs(save_dir)
-
-                # Salvar imagem com timestamp
-                timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                filename = os.path.join(save_dir, f"reversed_{timestamp}.jpg")
-
-                # Converte para BGR antes de salvar (OpenCV usa BGR)
-                frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-                cv2.imwrite(filename, frame_bgr)
-                print(f"Imagem salva: {filename}")
-            
-            reversing_direction(self.steer, self.motor, self.ultrasonic, raw_lidar)
-            return
-
         shrinked = shrink_space(raw_lidar)
         steer, target_angle = compute_steer_from_lidar(shrinked)
 
@@ -134,5 +108,4 @@ class VoitureAlgorithm:
         loop_time = end_time - start_time
         loop_time *= 1000000
 
-        self.console.print_to_console(f"Angle: {target_angle} Velocity: {self.motor.get_speed()} SPD: {current_speed:.2f} m/s BAT: {battery_level}V Loop: {loop_time:.0f} us")               
-            
+        self.console.print_to_console(f"&b&lAngle: &f{target_angle:.1f}\t&a&lVelocity: &f{self.motor.get_speed()} &6&lSPD: &f{current_speed:.2f} m/s &e&lBAT: &f{battery_level}V &d&lLoop: &f{loop_time:.0f} us")    

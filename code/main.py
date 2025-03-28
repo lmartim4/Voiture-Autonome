@@ -7,6 +7,7 @@ from interface_lidar import RPLidarReader
 from interface_motor import RealMotorInterface
 from interface_steer import RealSteerInterface
 from interface_camera import RealCameraInterface
+from interface_console import ColorConsoleInterface
 
 from algorithm.voiture_logger import CentralLogger
 from algorithm.constants import LIDAR_BAUDRATE, FIELD_OF_VIEW_DEG
@@ -18,6 +19,7 @@ logger = logger_instance.get_logger()
 
 def main():
     try:
+        I_Console = ColorConsoleInterface()
         I_Lidar = RPLidarReader(port="/dev/ttyUSB0", baudrate=LIDAR_BAUDRATE)
         #I_Lidar.start_live_plot()
         
@@ -46,7 +48,7 @@ def main():
                         camera=I_Camera,
                         steer=I_Steer,
                         motor=I_Motor,
-                        console=interfaces.MockConsoleInterface())
+                        console=I_Console)
 
         
         while(True):

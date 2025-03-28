@@ -1,6 +1,6 @@
 from algorithm.constants import STEER_VARIATION_RATE, STEER_CENTER
 from algorithm.interfaces import SteerInterface
-from PWM import PWM
+from raspberry_pwm import PWM
 import algorithm.voiture_logger as voiture_logger
 import time
 import signal

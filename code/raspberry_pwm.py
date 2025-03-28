@@ -1,6 +1,4 @@
 import os
-import serial
-import time
 import algorithm.voiture_logger as voiture_logger
 
 RPI5 = True

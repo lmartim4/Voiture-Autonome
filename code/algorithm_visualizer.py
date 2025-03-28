@@ -5,7 +5,6 @@ import matplotlib
 
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
-import matplotlib.patches as patches
 
 import algorithm.control_direction as control
 

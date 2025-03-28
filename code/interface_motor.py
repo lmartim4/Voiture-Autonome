@@ -1,6 +1,6 @@
 from algorithm.interfaces import MotorInterface
 from algorithm.constants import ESC_DC_MIN, ESC_DC_MAX
-from PWM import PWM
+from raspberry_pwm import PWM
 import algorithm.voiture_logger as voiture_logger
 import time
 
