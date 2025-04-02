@@ -14,11 +14,14 @@ class RPLidarReader(LiDarInterface):
     Implementation of LiDarInterface that uses RPLidar in a separate process
     to continuously read data. Call get_lidar_data() to retrieve the most recent
     360 readings (angle in [0..359], distance in meters).
+    
+    Features auto-restart capability if the LiDAR fails.
     """
 
     last_lidar_read = mp.Array('d', 360)
     last_lidar_update = mp.Value('d', 0.0)
     stop_event = mp.Event()
+    restart_event = mp.Event()  # New event to signal need for restart
 
     def __init__(
         self,
@@ -28,6 +31,8 @@ class RPLidarReader(LiDarInterface):
         fov_filter: int = LIDAR_FOV_FILTER,
         point_timeout_ms: int = LIDAR_POINT_TIMEOUT_MS,
         sensor_name: str = "Lidar",
+        max_restart_attempts: int = 5,  # New parameter for restart limits
+        restart_delay_seconds: int = 3  # Delay between restart attempts
     ):
         """
         :param port: Serial port where the LiDAR is connected.
@@ -36,6 +41,8 @@ class RPLidarReader(LiDarInterface):
         :param fov_filter: Field-of-view filter (keep data only within +/- fov_filter/2).
         :param point_timeout_ms: How long (in ms) a point can remain valid without an update.
         :param sensor_name: Name for logging.
+        :param max_restart_attempts: Maximum number of restart attempts before giving up.
+        :param restart_delay_seconds: Time to wait between restart attempts.
         """
         
         # Store parameters
@@ -44,17 +51,34 @@ class RPLidarReader(LiDarInterface):
         self.heading_offset_deg = heading_offset_deg
         self.fov_filter = fov_filter
         self.point_timeout_ms = point_timeout_ms
+        self.max_restart_attempts = max_restart_attempts
+        self.restart_delay_seconds = restart_delay_seconds
 
         # Prepare multiprocessing shared state
         self.last_lidar_read = mp.Array('d', 360)  # shared array of doubles
         self.last_lidar_update = mp.Value('d', 0.0)  # shared double (timestamp)
         self.stop_event = mp.Event()
+        self.restart_event = mp.Event()
+        self.restart_attempts = mp.Value('i', 0)  # Count restart attempts
 
         # Prepare logger
         self.sensor_logger_instance = cl.CentralLogger(sensor_name=sensor_name)
         self.sensor_logger = self.sensor_logger_instance.get_logger()
 
         # Start background process
+        self._lidar_process = None
+        self._start_lidar_process()
+
+        self._plot_process = None
+        self._watchdog_process = None
+        self._start_watchdog_process()
+
+    def _start_lidar_process(self):
+        """Start the LiDAR reading process"""
+        if self._lidar_process is not None and self._lidar_process.is_alive():
+            self.sensor_logger.info("[LidarReader] Process already running.")
+            return
+            
         self._lidar_process = mp.Process(
             target=self._run_lidar_process,
             args=(
@@ -64,8 +88,61 @@ class RPLidarReader(LiDarInterface):
             daemon=True
         )
         self._lidar_process.start()
+        self.sensor_logger.info("[LidarReader] Process started.")
 
-        self._plot_process = None
+    def _start_watchdog_process(self):
+        """Start the watchdog process that monitors LiDAR and restarts if needed"""
+        if self._watchdog_process is not None and self._watchdog_process.is_alive():
+            return
+            
+        self._watchdog_process = mp.Process(
+            target=self._run_watchdog_process,
+            daemon=True
+        )
+        self._watchdog_process.start()
+        self.sensor_logger.info("[LidarReader] Watchdog process started.")
+
+    def _run_watchdog_process(self):
+        """
+        Watchdog process that monitors the LiDAR process and restarts it if needed.
+        """
+        try:
+            while not self.stop_event.is_set():
+                # Check if restart is needed
+                if self.restart_event.is_set():
+                    # Reset the restart event
+                    self.restart_event.clear()
+                    
+                    # Check restart attempts
+                    with self.restart_attempts.get_lock():
+                        if self.restart_attempts.value >= self.max_restart_attempts:
+                            self.sensor_logger.info(f"[LidarWatchdog] Max restart attempts ({self.max_restart_attempts}) reached. Giving up.")
+                            self.stop_event.set()
+                            break
+                        
+                        self.restart_attempts.value += 1
+                        attempt = self.restart_attempts.value
+                    
+                    self.sensor_logger.info(f"[LidarWatchdog] Restart attempt {attempt}/{self.max_restart_attempts}")
+                    
+                    # Wait for process to terminate if it's still running
+                    if self._lidar_process and self._lidar_process.is_alive():
+                        self._lidar_process.join(timeout=5.0)
+                        
+                    # Wait before restart
+                    self.sensor_logger.info(f"[LidarWatchdog] Waiting {self.restart_delay_seconds}s before restart...")
+                    time.sleep(self.restart_delay_seconds)
+                    
+                    # Start a new process
+                    self._start_lidar_process()
+                    
+                # Sleep to avoid CPU overuse
+                time.sleep(1.0)
+                
+        except Exception as e:
+            self.sensor_logger.info(f"[LidarWatchdog] Error: {e}")
+        finally:
+            self.sensor_logger.info("[LidarWatchdog] Watchdog process ended")
 
     def _run_lidar_process(
         self,
@@ -144,12 +221,16 @@ class RPLidarReader(LiDarInterface):
             self.stop_event.set()
         except (RPLidarException, Exception) as e:
             sensor_logger_instance.logConsole(f"[Lidar] LIDAR error exception: {e}")
-            self.stop_event.set()
+            
+            # Instead of stopping, trigger restart if not already stopping
+            if not self.stop_event.is_set():
+                sensor_logger_instance.logConsole("[Lidar] Triggering restart...")
+                self.restart_event.set()
+            
         finally:
             if lidar is not None:
                 sensor_logger_instance.logConsole("[Lidar] Stopping LIDAR...")
                 try:
-                    self.stop_event.set()
                     lidar.stop()
                     lidar.stop_motor()
                     lidar.disconnect()
@@ -157,7 +238,6 @@ class RPLidarReader(LiDarInterface):
                     sensor_logger_instance.logConsole(f"[Lidar] Error stopping LIDAR: {e}")
 
             sensor_logger_instance.logConsole("[Lidar] Stopped.")
-            sensor_logger_instance.logConsole("[Lidar] Completely ended")
 
     def _plot_process_function(
         self,
@@ -211,9 +291,17 @@ class RPLidarReader(LiDarInterface):
         """
         self.sensor_logger_instance.logConsole("[LidarReader] Stopping...")
         self.stop_event.set()
-        if self._lidar_process.is_alive():
-            self._lidar_process.join()
-        self.sensor_logger_instance.logConsole("[LidarReader] Process stopped.")
+        
+        if self._lidar_process and self._lidar_process.is_alive():
+            self._lidar_process.join(timeout=5.0)
+            
+        if self._watchdog_process and self._watchdog_process.is_alive():
+            self._watchdog_process.join(timeout=5.0)
+            
+        if self._plot_process and self._plot_process.is_alive():
+            self._plot_process.join(timeout=5.0)
+            
+        self.sensor_logger_instance.logConsole("[LidarReader] All processes stopped.")
 
     def get_lidar_data(self) -> np.ndarray:
         """
@@ -241,11 +329,26 @@ class RPLidarReader(LiDarInterface):
         )
         self._plot_process.start()
         self.sensor_logger.info("[LidarReader] Live plot process started.")
+        
+    def manual_restart(self):
+        """
+        Manually trigger a restart of the LiDAR process.
+        """
+        self.sensor_logger_instance.logConsole("[LidarReader] Manual restart requested")
+        # Reset restart attempts counter for manual restart
+        with self.restart_attempts.get_lock():
+            self.restart_attempts.value = 0
+        self.restart_event.set()
 
 if __name__ == "__main__":
     try:
         # Create a reader
-        lidar_reader = RPLidarReader(port="/dev/ttyUSB0", baudrate=LIDAR_BAUDRATE)
+        lidar_reader = RPLidarReader(
+            port="/dev/ttyUSB0", 
+            baudrate=LIDAR_BAUDRATE,
+            max_restart_attempts=5,
+            restart_delay_seconds=3
+        )
         lidar_reader.start_live_plot()
         
         while not lidar_reader.stop_event.is_set():

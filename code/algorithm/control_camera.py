@@ -86,17 +86,17 @@ def calculate_color_ratios(mask_r, mask_g, width, height):
         return 0, 0
     
     try:
-        count_r = np.count_nonzero(mask_r) / (width * height)
-        count_g = np.count_nonzero(mask_g) / (width * height)
-        
-        return count_r, count_g
+        ratio_r = 100*np.count_nonzero(mask_r) / (width * height)
+        ratio_g = 100*np.count_nonzero(mask_g) / (width * height)
+        print(f"Dados: {ratio_r:.1f}%, {ratio_g:.1f}%")
+        return ratio_r, ratio_g
     except Exception as e:
         print(f"Error calculating color ratios: {e}")
         return 0, 0
 
-def determine_detection_status(avg_r, avg_g, count_r, count_g, min_ratio=0.01):
-    red_detected = avg_r != -1 and count_r >= min_ratio
-    green_detected = avg_g != -1 and count_g >= min_ratio
+def determine_detection_status(avg_r, avg_g, ratio_r, ratio_g, min_ratio=10):
+    red_detected = avg_r != -1 and ratio_r >= min_ratio
+    green_detected = avg_g != -1 and ratio_g >= min_ratio
     
     if red_detected and green_detected:
         if avg_r < avg_g:
@@ -192,7 +192,7 @@ def extract_info(frame, width, height):
         height: Frame height
         
     Returns:
-        tuple: (avg_r, avg_g, count_r, count_g, detection_status, processing_results)
+        tuple: (avg_r, avg_g, ratio_r, ratio_g, detection_status, processing_results)
     """
     if frame is None:
         return -1, -1, 0, 0, DetectionStatus.NONE
@@ -212,10 +212,10 @@ def extract_info(frame, width, height):
         avg_r, avg_g = calculate_color_positions(mask_r, mask_g)
         
         # Calculate color ratios
-        count_r, count_g = calculate_color_ratios(mask_r, mask_g, width, height)
+        ratio_r, ratio_g = calculate_color_ratios(mask_r, mask_g, width, height)
         
         # Determine detection status
-        detection_status = determine_detection_status(avg_r, avg_g, count_r, count_g)
+        detection_status = determine_detection_status(avg_r, avg_g, ratio_r, ratio_g)
         
         # Compile processing results for visualization
         processing_results = {
@@ -224,12 +224,12 @@ def extract_info(frame, width, height):
             'mask_g': mask_g,
             'avg_r': avg_r,
             'avg_g': avg_g,
-            'count_r': count_r,
-            'count_g': count_g,
+            'ratio_r': ratio_r,
+            'ratio_g': ratio_g,
             'status': detection_status
         }
         
-        return avg_r, avg_g, count_r, count_g, detection_status, processing_results
+        return avg_r, avg_g, ratio_r, ratio_g, detection_status, processing_results
     
     except Exception as e:
         print(f"Error processing camera stream: {e}")

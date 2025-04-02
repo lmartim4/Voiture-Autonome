@@ -166,7 +166,7 @@ class Camera:
             
             cv2.rectangle(frame_disp, a, b, color, 1)
 
-        count_r = np.count_nonzero(mask_r)/(self.width*self.height) # POURCENTAGE DE LA COULEUR ROUGE
-        count_g = np.count_nonzero(mask_g)/(self.width*self.height) # POURCENTAGE DE LA COULEUR VERTE
+        ratio_r = np.count_nonzero(mask_r)/(self.width*self.height) # POURCENTAGE DE LA COULEUR ROUGE
+        ratio_g = np.count_nonzero(mask_g)/(self.width*self.height) # POURCENTAGE DE LA COULEUR VERTE
 
-        return ray_pos, ray_labels, frame_disp, # count_r, count_g, avg_r, avg_g
+        return ray_pos, ray_labels, frame_disp, # ratio_r, ratio_g, avg_r, avg_g

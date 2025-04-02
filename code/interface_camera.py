@@ -198,7 +198,7 @@ class RealCameraInterface(CameraInterface):
                     # Process the frame if needed
                     if process_new_frame:
                         # Note: extract_info expects RGB input, no need to convert again
-                        avg_r, avg_g, count_r, count_g, detection_status, processing_results = extract_info(frame, width, height)
+                        avg_r, avg_g, ratio_r, ratio_g, detection_status, processing_results = extract_info(frame, width, height)
                         last_processing_results = processing_results
                     else:
                         # Use the last processing results if in manual mode and no new capture
