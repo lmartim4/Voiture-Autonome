@@ -135,10 +135,10 @@ class MockCameraInterface(CameraInterface):
         avg_g = 450  # Mock green object position (right side)
         
         # Mock detection ratios (percentage of frame covered)
-        count_r = 0.05  # 5% of frame is red
-        count_g = 0.08  # 8% of frame is green
+        ratio_r = 0.05  # 5% of frame is red
+        ratio_g = 0.08  # 8% of frame is green
         
-        return avg_r, avg_g, count_r, count_g
+        return avg_r, avg_g, ratio_r, ratio_g
     
     def cleanup(self):
         """Mock cleanup method"""

@@ -45,7 +45,7 @@ class VoitureAlgorithm:
         self.motor = motor
         self.console = console
 
-        avg_r, avg_g, count_r, count_g, detection_status, processing_results = extract_info(self.camera.get_camera_frame(), *self.camera.get_resolution())
+        avg_r, avg_g, ratio_r, ratio_g, detection_status, processing_results = extract_info(self.camera.get_camera_frame(), *self.camera.get_resolution())
         print(detection_status)
             
     def detect_wheel_stopped_collision(self):
@@ -58,7 +58,7 @@ class VoitureAlgorithm:
         motor_speed = self.motor.get_speed()
         
         # Define the threshold for stopped wheels (near zero velocity)
-        STOPPED_THRESHOLD = 0.1  # m/s
+        STOPPED_THRESHOLD = 0.01  # m/s
         # Define time threshold for collision detection (in seconds)
         COLLISION_TIME_THRESHOLD = 0.5  # 500 milliseconds
         
@@ -71,25 +71,141 @@ class VoitureAlgorithm:
             # If wheels have been stopped for longer than the threshold
             elif (current_time - self._wheel_stopped_start_time) > COLLISION_TIME_THRESHOLD and not self._collision_detected:
                 self._collision_detected = True
-                self.simple_marche_arrire(DetectionStatus.ONLY_GREEN)
                 self.console.print_to_console(f"&c&l[COLLISION DETECTED] &e- Wheels stopped for &f{COLLISION_TIME_THRESHOLD*1000:.0f}ms &ewhile motor running")
+                self.simple_marche_arrire()
         else:
             # Reset the timer if wheels are moving or motor is stopped
             if hasattr(self, '_wheel_stopped_start_time'):
                 delattr(self, '_wheel_stopped_start_time')
                 self._collision_detected = False
     
-    def simple_marche_arrire(self, detection):        
-        match (detection):
+    def simple_marche_arrire(self):        
+        avg_r, avg_g, ratio_r, ratio_g, detection_status, processing_results = extract_info(self.camera.get_camera_frame(), *self.camera.get_resolution())
+
+        match (detection_status):
             case DetectionStatus.ONLY_GREEN:
-                self.steer.set_steering_angle(-30)
+                if  ratio_g > 0.10:
+                    self.steer.set_steering_angle(25)
+                    self.motor.set_speed(-1.5)
+                    #time.sleep(1.5)
+                    
+                    for _ in range(20):
+                        ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
+                        if (ultrasonic_read <= 30.0 and ultrasonic_read != -1.0): 
+                            break
+                        time.sleep(0.1)
+
+                    self.motor.set_speed(0)
+                    self.steer.set_steering_angle(-25)
+                    self.motor.set_speed(0.7)
+                    time.sleep(0.1)
+                    print("GIRANDO")
+                else:
+                    self.voltando()
             case DetectionStatus.ONLY_RED:
-                self.steer.set_steering_angle(30)
-        
-        self.motor.set_speed(-1.2)
-        time.sleep(1)
+                if  ratio_r > 0.10:
+                    self.steer.set_steering_angle(-25)
+                    self.motor.set_speed(-1.5)
+                    #time.sleep(1.5)
+
+                    for _ in range(20):
+                        ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
+                        if (ultrasonic_read <= 30.0 and ultrasonic_read != -1.0): 
+                            break
+                        time.sleep(0.1)
+
+                    self.motor.set_speed(0)
+                    self.steer.set_steering_angle(25)
+                    self.motor.set_speed(0.7)
+                    time.sleep(0.1)
+                    print("GIRANDO")
+                else:
+                    self.voltando()
+            case _:
+                self.voltando()
+
+    def voltando(self):
+        self.steer.set_steering_angle(0)
+        self.motor.set_speed(-1.5)
+        #time.sleep(1.5)
+
+        for _ in range(20):
+            ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
+            if (ultrasonic_read <= 30.0 and ultrasonic_read != -1.0): 
+                print(f"Sai pelo break!!! {ultrasonic_read}")
+                break
+            time.sleep(0.1)
+
         self.motor.set_speed(0)
+        self.motor.set_speed(0.7)
+        print("VOLTANDO")
+    
+    def reversing_direction(self):
+        l_side = self.lidar.get_lidar_data()[60:120]   # Região à esquerda do carrinho
+        r_side = self.lidar.get_lidar_data()[240:300]  # Região à direita do carrinho
+                    
+        avg_left = np.mean(l_side[l_side > 0])
+        avg_right = np.mean(r_side[r_side > 0]) 
+
+        if avg_left > avg_right:
+            print("Espace libre à gauche, rotation vers la gauche...")
+            self.steer.set_steering_angle(+25)
+            self.motor.set_speed(-2.0)
+            print("Rodou esquerda...")
+            
+            for _ in range(20):
+                ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
+                if (ultrasonic_read <= 30.0 and ultrasonic_read != -1.0): 
+                    break
+                time.sleep(0.1)
+
+            self.motor.set_speed(0)
+            self.steer.set_steering_angle(-25)
+            self.motor.set_speed(0.7)
+            time.sleep(1.0)
+            return
+        else:
+            print("Espace libre à droite, rotation vers la droite...")
+            self.steer.set_steering_angle(-25)
+            self.motor.set_speed(-2.0)
+            print("Rodou direita...")
+
+            for _ in range(20):
+                ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
+                if (ultrasonic_read <= 30.0 and ultrasonic_read != -1.0):
+                    break
+                time.sleep(0.1)
+
+            self.motor.set_speed(0)
+            self.steer.set_steering_angle(+25)
+            self.motor.set_speed(0.7)
+            time.sleep(1.0)
+            return
         
+    def print_detection(self,detection, ratio_r, ratio_g):
+        match (detection):
+            case DetectionStatus.ONLY_RED:
+                self.console.print_to_console(f"&4&lo &4&lo &4&lo &4&lo &4&lo &4&lo {ratio_r}, {ratio_g}")    
+            case DetectionStatus.ONLY_GREEN:
+                self.console.print_to_console(f"&2&lo &2&lo &2&lo &2&lo &2&lo &2&lo {ratio_r}, {ratio_g}")    
+            case DetectionStatus.RED_LEFT_GREEN_RIGHT:
+                self.console.print_to_console(f"&4&lo &4&lo &4&lo &2&lo &2&lo &2&lo {ratio_r}, {ratio_g}")    
+            case DetectionStatus.GREEN_LEFT_RED_RIGHT:
+                self.console.print_to_console(f"&2&lo &2&lo &2&lo &4&lo &4&lo &4&lo {ratio_r}, {ratio_g}")    
+        return
+
+    def demi_tour(self):   
+        avg_r, avg_g, ratio_r, ratio_g, detection_status, processing_results = extract_info(self.camera.get_camera_frame(), *self.camera.get_resolution()) 
+        self.print_detection(detection_status, ratio_r, ratio_g)
+        
+        match (detection_status):
+            case DetectionStatus.RED_LEFT_GREEN_RIGHT:
+                return False
+            case DetectionStatus.GREEN_LEFT_RED_RIGHT:
+                return True
+
+        return False
+
         
     def run_step(self):
         """Runs a single step of the algorithm and measures execution time."""
@@ -99,15 +215,17 @@ class VoitureAlgorithm:
         current_speed = self.speed.get_speed()
         battery_level = self.battery.get_battery_voltage()
         
-        if self.detect_wheel_stopped_collision() :
-            print("Detectado")
-            #self.on_blocked_by_wheel()
-            
+        self.detect_wheel_stopped_collision() # check wheel stopped
+        
+        if self.demi_tour() :
+          print("Reversed direction! reversing..")
+          self.reversing_direction()
+
         shrinked = shrink_space(raw_lidar)
         steer, target_angle = compute_steer_from_lidar(shrinked)
 
         self.steer.set_steering_angle(steer)
-        self.motor.set_speed(1)
+        self.motor.set_speed(0.9)
         
         end_time = time.time()
         loop_time = end_time - start_time

@@ -5,7 +5,6 @@ import multiprocessing
 
 from algorithm.constants import TICKS_TO_METER
 from algorithm.interfaces import SpeedInterface, UltrasonicInterface, BatteryInterface
-from abc import ABC, abstractmethod
 
 _last_serial_read = multiprocessing.Array('d', [0.0, 0.0, 0.0])  # [speed, ultrasonic, battery]
 _last_serial_update = multiprocessing.Value('d', 0.0)
