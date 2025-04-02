@@ -58,7 +58,7 @@ class VoitureAlgorithm:
         motor_speed = self.motor.get_speed()
         
         # Define the threshold for stopped wheels (near zero velocity)
-        STOPPED_THRESHOLD = 0.1  # m/s
+        STOPPED_THRESHOLD = 0.01  # m/s
         # Define time threshold for collision detection (in seconds)
         COLLISION_TIME_THRESHOLD = 0.5  # 500 milliseconds
         
@@ -81,12 +81,18 @@ class VoitureAlgorithm:
     
     def simple_marche_arrire(self):        
         avg_r, avg_g, count_r, count_g, detection_status, processing_results = extract_info(self.camera.get_camera_frame(), *self.camera.get_resolution())
-        
         match (detection_status):
             case DetectionStatus.ONLY_GREEN:
                 self.steer.set_steering_angle(25)
                 self.motor.set_speed(-1.5)
-                time.sleep(1.5)
+                #time.sleep(1.5)
+                
+                for _ in range(20):
+                    ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
+                    if (ultrasonic_read <= 30.0 and ultrasonic_read != -1.0): 
+                        break
+                    time.sleep(0.1)
+
                 self.motor.set_speed(0)
                 self.steer.set_steering_angle(-25)
                 self.motor.set_speed(0.7)
@@ -95,21 +101,41 @@ class VoitureAlgorithm:
             case DetectionStatus.ONLY_RED:
                 self.steer.set_steering_angle(-25)
                 self.motor.set_speed(-1.5)
-                time.sleep(1.5)
+                #time.sleep(1.5)
+
+                for _ in range(20):
+                    ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
+                    if (ultrasonic_read <= 30.0 and ultrasonic_read != -1.0): 
+                        break
+                    time.sleep(0.1)
+
                 self.motor.set_speed(0)
                 self.steer.set_steering_angle(25)
                 self.motor.set_speed(0.7)
                 time.sleep(0.1)
                 print("GIRANDO")
+            case default:
+                self.steer.set_steering_angle(0)
+                self.motor.set_speed(-1.5)
+                #time.sleep(1.5)
+
+                for _ in range(20):
+                    ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
+                    if (ultrasonic_read <= 30.0 and ultrasonic_read != -1.0): 
+                        print(f"Sai pelo break!!! {ultrasonic_read}")
+                        break
+                    time.sleep(0.1)
+
+                self.motor.set_speed(0)
+                self.motor.set_speed(0.7)
+                print("VOLTANDO")
 
     def reversing_direction(self):
         l_side = self.lidar.get_lidar_data()[60:120]   # Região à esquerda do carrinho
         r_side = self.lidar.get_lidar_data()[240:300]  # Região à direita do carrinho
                     
         avg_left = np.mean(l_side[l_side > 0])
-        avg_right = np.mean(r_side[r_side > 0])
-
-        ultrasonic_read = self.ultrasonic.get_ultrasonic_data()    
+        avg_right = np.mean(r_side[r_side > 0]) 
 
         if avg_left > avg_right:
             print("Espace libre à gauche, rotation vers la gauche...")
@@ -118,7 +144,8 @@ class VoitureAlgorithm:
             print("Rodou esquerda...")
             
             for _ in range(20):
-                if (ultrasonic_read <= 30.0): 
+                ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
+                if (ultrasonic_read <= 30.0 and ultrasonic_read != -1.0): 
                     break
                 time.sleep(0.1)
 
@@ -134,7 +161,8 @@ class VoitureAlgorithm:
             print("Rodou direita...")
 
             for _ in range(20):
-                if (ultrasonic_read <= 30.0):
+                ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
+                if (ultrasonic_read <= 30.0 and ultrasonic_read != -1.0):
                     break
                 time.sleep(0.1)
 
@@ -166,7 +194,7 @@ class VoitureAlgorithm:
             case DetectionStatus.GREEN_LEFT_RED_RIGHT:
                 return True
 
-        return
+        return False
 
         
     def run_step(self):
@@ -187,7 +215,7 @@ class VoitureAlgorithm:
         steer, target_angle = compute_steer_from_lidar(shrinked)
 
         self.steer.set_steering_angle(steer)
-        self.motor.set_speed(1)
+        self.motor.set_speed(0.8)
         
         end_time = time.time()
         loop_time = end_time - start_time

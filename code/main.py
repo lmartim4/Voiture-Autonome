@@ -21,7 +21,7 @@ def main():
     try:
         I_Console = ColorConsoleInterface()
         I_Lidar = RPLidarReader(port="/dev/ttyUSB0", baudrate=LIDAR_BAUDRATE)
-        #I_Lidar.start_live_plot()
+        I_Lidar.start_live_plot()
         
         I_Steer = RealSteerInterface(channel=1, frequency=50.0)
         I_Motor = RealMotorInterface(channel=0, frequency=50.0)

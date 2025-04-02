@@ -35,7 +35,7 @@ class RealCameraInterface(CameraInterface):
         return self.width, self.height
     
     #SORROUNDING CODE NEEDE FOR THE INTERFACE
-    def __init__(self, width=640, height=480):
+    def __init__(self, width=160, height=120):
         self.logger = voiture_logger.CentralLogger(sensor_name="RealCamera")
         self.picam2 = Picamera2()
         config = self.picam2.create_preview_configuration(

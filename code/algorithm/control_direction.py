@@ -121,43 +121,47 @@ def compute_steer(alpha):
 def convolution_filter(distances):
     shift = FIELD_OF_VIEW_DEG // 2
 
-    # Create a Gaussian kernel that is heavier near the center
-    # so that "front" (which is rolled to the center) gets higher weight.
-    # kernel_size = CONVOLUTION_SIZE
-    # center = 5
+    # Create a very peaked kernel with extremely strong center weighting
+    # This will make obstacles in the center appear much closer
     
-    # # x ranges from -center to +center
-    # x = np.arange(kernel_size) - center
+    # Option 1: Extremely sharp Gaussian
+    kernel_size = CONVOLUTION_SIZE
+    center = kernel_size // 2
     
-    # # Adjust sigma to control how peaked the kernel is; smaller sigma => sharper peak
-    # sigma = kernel_size / 60.0  # Example: 6.0 is arbitrary; tune to taste
-    # kernel = np.exp(-0.5 * (x / sigma) ** 2)
+    # x ranges from -center to +center
+    x = np.arange(kernel_size) - center
     
-    # # Normalize the kernel so it sums to 1
-    # kernel /= kernel.sum()
-
-
-    ## Corsi teste
-    # percentuais = np.array([ 0.1, 56, 56, 56, 0.1])
-    # percentuais = np.array([ 36, 5, 36, 56, 36, 5, 36])
-    percentuais = np.array([ 1, 5, 56, 5, 1])
+    # Using a very small sigma for an extremely sharp peak
+    sigma = kernel_size #/ 12.0  # Much smaller sigma for sharper peak
+    kernel = np.exp(-0.5 * (x / sigma) ** 2)
     
-    pesos = percentuais / np.sum(percentuais) 
-
-    tamanho_regioes = [int(CONVOLUTION_SIZE * p) for p in pesos]
-
-    tamanho_regioes[-1] += CONVOLUTION_SIZE - sum(tamanho_regioes)
-
-    kernel = np.zeros(CONVOLUTION_SIZE)
-    inicio = 0
-    for i, tamanho in enumerate(tamanho_regioes):
-        kernel[inicio:inicio + tamanho] = pesos[i]
-        inicio += tamanho
-
-    #kernel = np.ones(31)
-    kernel /= np.sum(kernel)
-
-    ## fim corsi teste
+    # Option 2: Manual peaked distribution (uncomment to use)
+    # Define a highly peaked distribution with center boosted by a large factor
+    # kernel = np.ones(CONVOLUTION_SIZE)
+    # center_idx = CONVOLUTION_SIZE // 2
+    # center_width = CONVOLUTION_SIZE // 8  # How many elements get the boost
+    # boost_factor = 100000  # Extreme boosting factor
+    
+    # Apply center boost - this creates an extreme peak
+    # for i in range(center_idx - center_width//2, center_idx + center_width//2 + 1):
+    #     if 0 <= i < CONVOLUTION_SIZE:
+    #         kernel[i] = boost_factor
+    
+    # Option 3: Simplified extreme center boost (currently in use)
+    # Create a kernel with extreme center boosting
+    kernel = np.ones(CONVOLUTION_SIZE)
+    center_idx = CONVOLUTION_SIZE // 2
+    
+    # Apply sharp center peak (just 1-3 elements)
+    peak_width = 30  # Adjust based on how narrow you want the peak
+    peak_start = center_idx - peak_width // 2
+    peak_end = peak_start + peak_width
+    
+    # Set extreme weight for the center elements
+    kernel[peak_start:peak_end] = 2000  # Extreme value to make obstacles appear much closer
+    
+    # Normalize the kernel so weights sum to 1
+    kernel /= kernel.sum()
 
     # Roll angles so the "front" starts around the middle
     angles = np.arange(0, 360)

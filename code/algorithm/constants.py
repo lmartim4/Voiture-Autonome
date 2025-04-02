@@ -74,12 +74,12 @@ def load_constants(new_filepath="config.json"):
     #------------------------------------------------#
     #          Point Cloud Filtering Settings        #
     #------------------------------------------------#
-    LIDAR_BAUDRATE = int(get_config_value(cfg, "LIDAR_BAUDRATE", 115200))
-    LIDAR_HEADING_OFFSET_DEG = int(get_config_value(cfg, "LIDAR_HEADING_OFFSET_DEG", -90))
+    LIDAR_BAUDRATE = int(get_config_value(cfg, "LIDAR_BAUDRATE", 256000)) #or 115200
+    LIDAR_HEADING_OFFSET_DEG = int(get_config_value(cfg, "LIDAR_HEADING_OFFSET_DEG", -89))
     LIDAR_POINT_TIMEOUT_MS = int(get_config_value(cfg, "LIDAR_POINT_TIMEOUT_MS", 1000))
     LIDAR_FOV_FILTER = int(get_config_value(cfg, "LIDAR_FOV_FILTER", 180))  # excludes backward readings
-    FIELD_OF_VIEW_DEG = int(get_config_value(cfg, "FIELD_OF_VIEW_DEG", 120))
-    CONVOLUTION_SIZE = int(get_config_value(cfg, "CONVOLUTION_SIZE", 31))
+    FIELD_OF_VIEW_DEG = int(get_config_value(cfg, "FIELD_OF_VIEW_DEG", 180))
+    CONVOLUTION_SIZE = int(get_config_value(cfg, "CONVOLUTION_SIZE", 71))
 
     #------------------------------------------------#
     #          Avoid Corner Parameters               #
@@ -93,7 +93,7 @@ def load_constants(new_filepath="config.json"):
     #------------------------------------------------#
     STEERING_LIMIT = float(get_config_value(cfg, "STEERING_LIMIT", 18.0))
     DC_STEER_MIN = float(get_config_value(cfg, "DC_STEER_MIN", 5.0))
-    DC_STEER_MAX = float(get_config_value(cfg, "DC_STEER_MAX", 10.0))
+    DC_STEER_MAX = float(get_config_value(cfg, "DC_STEER_MAX", 8.6))
     
     STEER_VARIATION_RATE = 0.5 * (DC_STEER_MAX - DC_STEER_MIN) / STEERING_LIMIT
     STEER_CENTER = 0.5 * (DC_STEER_MAX + DC_STEER_MIN)
@@ -141,7 +141,7 @@ def load_constants(new_filepath="config.json"):
         [40.0, 0.900],
         [50.0, 0.900]
     ])
-    AGGRESSIVENESS = float(get_config_value(cfg, "AGGRESSIVENESS", 0.7))
+    AGGRESSIVENESS = float(get_config_value(cfg, "AGGRESSIVENESS", 0.8))
 
 
     #------------------------------------------------#
