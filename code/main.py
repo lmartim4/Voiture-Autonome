@@ -38,7 +38,7 @@ def main():
             nonzero_count = np.count_nonzero(I_Lidar.get_lidar_data())
             time.sleep(0.1)
         
-        #I_Lidar.start_live_plot()
+        I_Lidar.start_live_plot()
         
         algorithm = VoitureAlgorithm(
                         lidar=I_Lidar,

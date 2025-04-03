@@ -7,7 +7,9 @@ from algorithm.constants import HITBOX_H1, HITBOX_H2, HITBOX_W
 from algorithm.control_camera import extract_info, DetectionStatus
 from algorithm.control_direction import compute_steer_from_lidar, shrink_space
 from algorithm.control_speed import compute_speed
-    
+
+back_dist = 30.0
+
 class VoitureAlgorithm:
     def __init__(self, 
                  lidar: LiDarInterface, 
@@ -93,7 +95,7 @@ class VoitureAlgorithm:
                     
                     for _ in range(15):
                         ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
-                        if (ultrasonic_read <= 50.0 and ultrasonic_read != -1.0): 
+                        if (ultrasonic_read <= back_dist and ultrasonic_read != -1.0): 
                             break
                         time.sleep(0.1)
 
@@ -112,7 +114,7 @@ class VoitureAlgorithm:
 
                     for _ in range(15):
                         ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
-                        if (ultrasonic_read <= 50.0 and ultrasonic_read != -1.0): 
+                        if (ultrasonic_read <= back_dist and ultrasonic_read != -1.0): 
                             break
                         time.sleep(0.1)
 
@@ -133,7 +135,7 @@ class VoitureAlgorithm:
 
         for _ in range(15):
             ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
-            if (ultrasonic_read <= 50.0 and ultrasonic_read != -1.0): 
+            if (ultrasonic_read <= back_dist and ultrasonic_read != -1.0): 
                 print(f"Sai pelo break!!! {ultrasonic_read}")
                 break
             time.sleep(0.1)
@@ -157,7 +159,7 @@ class VoitureAlgorithm:
             
             for _ in range(20):
                 ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
-                if (ultrasonic_read <= 50.0 and ultrasonic_read != -1.0): 
+                if (ultrasonic_read <= back_dist and ultrasonic_read != -1.0): 
                     break
                 time.sleep(0.1)
 
@@ -174,7 +176,7 @@ class VoitureAlgorithm:
 
             for _ in range(20):
                 ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
-                if (ultrasonic_read <= 50.0 and ultrasonic_read != -1.0):
+                if (ultrasonic_read <= back_dist and ultrasonic_read != -1.0):
                     break
                 time.sleep(0.1)
 

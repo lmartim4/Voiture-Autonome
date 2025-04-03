@@ -130,7 +130,7 @@ def convolution_filter(distances):
     x = np.arange(kernel_size) - center
     
     # Using a very small sigma for an extremely sharp peak
-    sigma = kernel_size #/ 12.0  # Much smaller sigma for sharper peak
+    sigma = kernel_size/12 #/ 12.0  # Much smaller sigma for sharper peak
     kernel = np.exp(-0.5 * (x / sigma) ** 2)
     
     # Option 2: Manual peaked distribution (uncomment to use)
