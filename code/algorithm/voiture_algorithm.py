@@ -195,8 +195,11 @@ class VoitureAlgorithm:
                 self.console.print_to_console(f"&2&lo &2&lo &2&lo &4&lo &4&lo &4&lo {ratio_r}, {ratio_g}")    
         return
 
-    def demi_tour(self):   
-        avg_r, avg_g, ratio_r, ratio_g, detection_status, processing_results = extract_info(self.camera.get_camera_frame(), *self.camera.get_resolution()) 
+    def demi_tour(self): 
+        frame = self.camera.get_camera_frame()
+        
+        avg_r, avg_g, ratio_r, ratio_g, detection_status, processing_results = extract_info(frame, *self.camera.get_resolution()) 
+        
         self.print_detection(detection_status, ratio_r, ratio_g)
         
         match (detection_status):
@@ -218,7 +221,7 @@ class VoitureAlgorithm:
         
         self.detect_wheel_stopped_collision() # check wheel stopped
         
-        if self.demi_tour() :
+        if self.demi_tour():
           print("Reversed direction! reversing..")
           self.reversing_direction()
 

@@ -1,66 +1,134 @@
-from algorithm.interfaces import CameraInterface
-from algorithm.control_camera import *
+import multiprocessing
 import numpy as np
 import cv2
-import time
-import algorithm.voiture_logger as voiture_logger
 from picamera2 import Picamera2
-
-import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
+import time
+from algorithm.interfaces import CameraInterface
+from algorithm.voiture_logger import *  # Assuming this is your custom logger
 
-matplotlib.use('TkAgg')
 
 class RealCameraInterface(CameraInterface):
     
-    #THE IMPLEMENTATION OF THE ABSTRACT METHOD
-    def get_camera_frame(self) -> np.ndarray:
-        """Implementation of the abstract method to get a camera frame"""
+    def __init__(self, width=160, height=120):
+        self.logger = CentralLogger(sensor_name="RealCamera")
+        self.width = width
+        self.height = height
+        
+        # Create a shared memory buffer for the frame
+        self.frame_shape = (height, width, 3)
+        self.shared_array = multiprocessing.Array('B', height * width * 3)
+        
+        # Use a lock to ensure thread safety when accessing the shared frame
+        self.frame_lock = multiprocessing.Lock()
+        
+        # Flag to signal the process to stop
+        self.running = multiprocessing.Value('b', True)
+        
+        # Initialize the camera process
+        self.camera_process = multiprocessing.Process(
+            target=self._camera_capture_process, 
+            args=(self.shared_array, self.frame_shape, self.frame_lock, self.running, width, height)
+        )
+        
+        # Start the camera capture process
+        self.camera_process.start()
+        self.logger.logConsole("Camera capture process started")
+
+    @staticmethod
+    def _camera_capture_process(shared_array, frame_shape, frame_lock, running, width, height):
+        """Process function that continuously captures frames"""
+        # Initialize the camera
+        logger = CentralLogger(sensor_name="RealCameraProcess")
+        picam2 = Picamera2()
+        
+        config = picam2.create_preview_configuration(
+            main={"size": (width, height)},
+            lores={"size": (width, height)}
+        )
+        picam2.configure(config)
+        
         try:
-            frame = self.picam2.capture_array()
-            if frame is None:
-                self.logger.logConsole("Camera frame could not be captured")
-                return None
+            picam2.start()
+            logger.logConsole("Camera process initialized successfully")
             
-            # Rotate the frame 180 degrees
-            frame = cv2.rotate(frame, cv2.ROTATE_180)
+            # Main capture loop
+            while running.value:
+                try:
+                    # Capture a frame
+                    frame = picam2.capture_array()
+                    
+                    if frame is not None:
+                        # Rotate the frame 180 degrees
+                        frame = cv2.rotate(frame, cv2.ROTATE_180)
+                        
+                        # Convert to contiguous array if it's not already
+                        if not frame.flags["C_CONTIGUOUS"]:
+                            frame = np.ascontiguousarray(frame)
+                        
+                        # Ensure correct shape and type
+                        if frame.shape != frame_shape or frame.dtype != np.uint8:
+                            continue
+                        
+                        # Write to shared memory with lock
+                        with frame_lock:
+                            shared_array_np = np.frombuffer(shared_array.get_obj(), dtype=np.uint8).reshape(frame_shape)
+                            np.copyto(shared_array_np, frame)
+                    
+                    # Small sleep to prevent high CPU usage
+                    time.sleep(0.01)
+                    
+                except Exception as e:
+                    logger.logConsole(f"Error in camera capture process: {e}")
+                    time.sleep(0.1)  # Sleep longer on error
+            
+        except Exception as e:
+            logger.logConsole(f"Camera process initialization error: {e}")
+        finally:
+            # Clean up camera resources
+            try:
+                picam2.close()
+                logger.logConsole("Camera process resources cleaned up")
+            except Exception as e:
+                logger.logConsole(f"Error cleaning up camera process resources: {e}")
+    
+    def get_camera_frame(self) -> np.ndarray:
+        """Gets the latest camera frame from shared memory"""
+        try:
+            # Create a new array from the shared memory with lock
+            with self.frame_lock:
+                frame = np.frombuffer(self.shared_array.get_obj(), dtype=np.uint8).reshape(self.frame_shape).copy()
+            
             return frame
         except Exception as e:
-            self.logger.logConsole(f"Error capturing camera frame: {e}")
+            self.logger.logConsole(f"Error retrieving camera frame: {e}")
             return None
     
     def get_resolution(self) -> tuple[int, int]:
         """Returns the camera resolution as (width, height)."""
         return self.width, self.height
     
-    #SORROUNDING CODE NEEDE FOR THE INTERFACE
-    def __init__(self, width=160, height=120):
-        self.logger = voiture_logger.CentralLogger(sensor_name="RealCamera")
-        self.picam2 = Picamera2()
-        config = self.picam2.create_preview_configuration(
-            main={"size": (width, height)},
-            lores={"size": (width, height)}
-        )
-        self.picam2.configure(config)
-
-        try:
-            self.picam2.start()
-            self.logger.logConsole("Camera initialization successful")
-        except Exception as e:
-            self.logger.logConsole(f"Camera initialization error: {e}")
-            raise
-
-        self.width = width
-        self.height = height
-        
     def cleanup(self):
+        """Cleans up resources and stops the camera process"""
         try:
-            self.picam2.close()
-            self.logger.logConsole("Camera resources cleaned up")
+            # Signal the process to stop
+            self.running.value = False
+            
+            # Wait for the process to terminate
+            if self.camera_process.is_alive():
+                self.camera_process.join(timeout=2)
+                
+            # If process didn't terminate, force terminate
+            if self.camera_process.is_alive():
+                self.camera_process.terminate()
+                self.logger.logConsole("Camera process forcefully terminated")
+            else:
+                self.logger.logConsole("Camera process terminated gracefully")
+                
         except Exception as e:
             self.logger.logConsole(f"Error cleaning up camera resources: {e}")
-          
+    
     def debug_camera(self):
         """Opens a debug window with camera visualization and processing information"""
         self.logger.logConsole("Starting camera debug visualization")
@@ -81,8 +149,8 @@ class RealCameraInterface(CameraInterface):
         
         # Initialize image displays
         img_original = ax_original.imshow(np.zeros((self.height, self.width, 3), dtype=np.uint8))
-        img_red_mask = ax_red_mask.imshow(np.zeros((self.height, self.width), dtype=np.uint8), cmap='Reds', vmin=0, vmax=1)  # Usando 'Reds' com vmin=0, vmax=1 para visualização binária
-        img_green_mask = ax_green_mask.imshow(np.zeros((self.height, self.width), dtype=np.uint8), cmap='Greens', vmin=0, vmax=1)  # Simplificado para vmin=0, vmax=1
+        img_red_mask = ax_red_mask.imshow(np.zeros((self.height, self.width), dtype=np.uint8), cmap='Reds', vmin=0, vmax=1)
+        img_green_mask = ax_green_mask.imshow(np.zeros((self.height, self.width), dtype=np.uint8), cmap='Greens', vmin=0, vmax=1)
         img_visualization = ax_visualization.imshow(np.zeros((self.height, self.width, 3), dtype=np.uint8))
         
         # Set titles
@@ -208,20 +276,19 @@ class RealCameraInterface(CameraInterface):
                         # Update images in the figure
                         img_original.set_data(frame)
                         
-                        # Certifique-se de que as máscaras estão visíveis, normalizando os valores
+                        # Make sure masks are visible by normalizing values
                         red_mask = processing_results['mask_r']
                         green_mask = processing_results['mask_g']
                         
-                        # Garantir que as máscaras sejam binárias (0 e 1)
-                        # Para a máscara vermelha, vamos simplificar para um mapa binário
+                        # Ensure masks are binary (0 and 1)
                         if red_mask.max() > 1:
-                            # Se estiver em escala 0-255, normalizar para 0-1
+                            # If in 0-255 scale, normalize to 0-1
                             red_mask = (red_mask > 0).astype(np.uint8)
                         else:
-                            # Se já estiver em 0-1, garantir que seja binária
+                            # If already in 0-1, ensure it's binary
                             red_mask = (red_mask > 0).astype(np.uint8)
                         
-                        # Para a máscara verde, mesma abordagem
+                        # Same approach for green mask
                         if green_mask.max() > 1:
                             green_mask = (green_mask > 0).astype(np.uint8)
                         else:
@@ -230,7 +297,7 @@ class RealCameraInterface(CameraInterface):
                         img_red_mask.set_data(red_mask)
                         img_green_mask.set_data(green_mask)
                         
-                        # Manter limites fixos para visualização binária
+                        # Keep fixed limits for binary visualization
                         img_red_mask.set_clim(vmin=0, vmax=1)
                         img_green_mask.set_clim(vmin=0, vmax=1)
                         
@@ -259,10 +326,10 @@ class RealCameraInterface(CameraInterface):
                     import traceback
                     traceback.print_exc()
                     break
-
         # Start update in the main thread (for matplotlib compatibility)
         update()
-        
+
+
 if __name__ == "__main__":
     try:
         print("Starting camera debug interface...")
