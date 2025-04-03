@@ -48,6 +48,7 @@ class VoitureAlgorithm:
 
         avg_r, avg_g, ratio_r, ratio_g, detection_status, processing_results = extract_info(self.camera.get_camera_frame(), *self.camera.get_resolution())
         print(detection_status)
+        
             
     def detect_wheel_stopped_collision(self):
         """
@@ -59,7 +60,7 @@ class VoitureAlgorithm:
         motor_speed = self.motor.get_speed()
         
         # Define the threshold for stopped wheels (near zero velocity)
-        STOPPED_THRESHOLD = 0.01  # m/s
+        STOPPED_THRESHOLD = 0.02  # m/s
         # Define time threshold for collision detection (in seconds)
         COLLISION_TIME_THRESHOLD = 0.5  # 500 milliseconds
         
@@ -90,9 +91,9 @@ class VoitureAlgorithm:
                     self.motor.set_speed(-1.5)
                     #time.sleep(1.5)
                     
-                    for _ in range(20):
+                    for _ in range(15):
                         ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
-                        if (ultrasonic_read <= 30.0 and ultrasonic_read != -1.0): 
+                        if (ultrasonic_read <= 50.0 and ultrasonic_read != -1.0): 
                             break
                         time.sleep(0.1)
 
@@ -109,9 +110,9 @@ class VoitureAlgorithm:
                     self.motor.set_speed(-1.5)
                     #time.sleep(1.5)
 
-                    for _ in range(20):
+                    for _ in range(15):
                         ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
-                        if (ultrasonic_read <= 30.0 and ultrasonic_read != -1.0): 
+                        if (ultrasonic_read <= 50.0 and ultrasonic_read != -1.0): 
                             break
                         time.sleep(0.1)
 
@@ -130,9 +131,9 @@ class VoitureAlgorithm:
         self.motor.set_speed(-1.5)
         #time.sleep(1.5)
 
-        for _ in range(20):
+        for _ in range(15):
             ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
-            if (ultrasonic_read <= 30.0 and ultrasonic_read != -1.0): 
+            if (ultrasonic_read <= 50.0 and ultrasonic_read != -1.0): 
                 print(f"Sai pelo break!!! {ultrasonic_read}")
                 break
             time.sleep(0.1)
@@ -156,7 +157,7 @@ class VoitureAlgorithm:
             
             for _ in range(20):
                 ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
-                if (ultrasonic_read <= 30.0 and ultrasonic_read != -1.0): 
+                if (ultrasonic_read <= 50.0 and ultrasonic_read != -1.0): 
                     break
                 time.sleep(0.1)
 
@@ -173,7 +174,7 @@ class VoitureAlgorithm:
 
             for _ in range(20):
                 ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
-                if (ultrasonic_read <= 30.0 and ultrasonic_read != -1.0):
+                if (ultrasonic_read <= 50.0 and ultrasonic_read != -1.0):
                     break
                 time.sleep(0.1)
 
@@ -219,7 +220,7 @@ class VoitureAlgorithm:
         current_speed = self.speed.get_speed()
         battery_level = self.battery.get_battery_voltage()
         
-        self.detect_wheel_stopped_collision() # check wheel stopped
+        self.detect_wheel_stopped_collision()
         
         if self.demi_tour():
           print("Reversed direction! reversing..")
@@ -236,4 +237,4 @@ class VoitureAlgorithm:
         loop_time = end_time - start_time
         loop_time *= 1000000
 
-        self.console.print_to_console(f"&b&lAngle: &f{target_angle:.1f}\t&a&lVelocity: &f{self.motor.get_speed()} &6&lSPD: &f{current_speed:.2f} m/s &e&lBAT: &f{battery_level}V &d&lLoop: &f{loop_time:.0f} us")    
+        self.console.print_to_console(f"&b&lAngle: &f{target_angle:.1f}\t&a&lVelocity: &f{self.motor.get_speed()} &6&lSPD: &f{current_speed:.2f} m/s Dist: {self.ultrasonic.get_ultrasonic_data()} &e&lBAT: &f{battery_level}V &d&lLoop: &f{loop_time:.0f} us")    

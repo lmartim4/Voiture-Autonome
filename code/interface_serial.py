@@ -37,7 +37,7 @@ class SharedMemBatteryInterface(BatteryInterface):
     def get_battery_voltage(self) -> float:
         return get_battery()
 
-def start_serial_monitor(port='/dev/ttyACM0', baudrate=9600):
+def start_serial_monitor(port='/dev/ttyACM0', baudrate=115200):
     """Start the serial monitor in a separate thread"""
     thread = threading.Thread(target=run_serial_monitor, args=(port, baudrate))
     thread.daemon = True
@@ -87,7 +87,7 @@ def run_serial_monitor(port, baudrate):
 # Example usage
 if __name__ == "__main__":
     # Start the serial monitor
-    monitor_thread = start_serial_monitor(port='/dev/ttyACM0', baudrate=9600)
+    monitor_thread = start_serial_monitor(port='/dev/ttyACM0', baudrate=115200)
     
     # Create interface instances
     speed_interface = SharedMemSpeedInterface()

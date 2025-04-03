@@ -93,7 +93,7 @@ class VoitureAlgorithmPlotter:
         blue_arrow_angle = (target_angle_deg - delta) if speed >= 0 else ((target_angle_deg - delta) + 180) % 360
 
         self.ax_main.clear()
-        self.ax_main.set_xlim(-2.0, 2.0)
+        self.ax_main.set_xlim(-3, 3.0)
         self.ax_main.set_ylim(-0.5, 5)
         self.ax_main.set_aspect("equal")
 

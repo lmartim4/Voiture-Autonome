@@ -24,7 +24,7 @@ def main():
         I_Steer = RealSteerInterface(channel=1, frequency=50.0)
         I_Motor = RealMotorInterface(channel=0, frequency=50.0)
 
-        start_serial_monitor(port='/dev/ttyACM0', baudrate=9600)
+        start_serial_monitor(port='/dev/ttyACM0', baudrate=115200)
                 
         I_SpeedReading = SharedMemSpeedInterface()
         I_back_wall_distance_reading = SharedMemUltrasonicInterface()
