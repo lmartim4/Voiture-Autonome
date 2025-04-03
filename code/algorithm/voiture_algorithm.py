@@ -224,9 +224,9 @@ class VoitureAlgorithm:
         
         self.detect_wheel_stopped_collision()
         
-        if self.demi_tour():
-          print("Reversed direction! reversing..")
-          self.reversing_direction()
+        #if self.demi_tour():
+         # print("Reversed direction! reversing..")
+          # self.reversing_direction()
 
         shrinked = shrink_space(raw_lidar)
         steer, target_angle = compute_steer_from_lidar(shrinked)

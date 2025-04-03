@@ -2,8 +2,8 @@ from algorithm.constants import *
 import numpy as np
 
 def compute_speed(convoluted_lidar, target_angle: float):
-    MIN_SPEED = 0.8  # Minimum speed for curves
-    MAX_SPEED = 1.3  # Maximum speed for straight paths
+    MIN_SPEED = 0.7  # Minimum speed for curves
+    MAX_SPEED = 1.6  # Maximum speed for straight paths
     
     angle_magnitude = abs(target_angle)
     
