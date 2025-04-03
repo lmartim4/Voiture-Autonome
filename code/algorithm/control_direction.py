@@ -98,8 +98,6 @@ def compute_angle(filtred_distances, filtred_angles, raw_lidar):
         if r_angle == 0 and r_dist < AVOID_CORNER_MIN_DISTANCE:
             r_angle = index
 
-    #print(f"l_dist: {l_dist} r_dist: {r_dist} {l_angle = } {r_angle = }")
-
     if l_angle == r_angle:
         delta = 0
     elif l_angle > r_angle:

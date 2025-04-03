@@ -6,6 +6,7 @@ from algorithm.interfaces import *
 from algorithm.constants import HITBOX_H1, HITBOX_H2, HITBOX_W
 from algorithm.control_camera import extract_info, DetectionStatus
 from algorithm.control_direction import compute_steer_from_lidar, shrink_space
+from algorithm.control_speed import compute_speed
     
 class VoitureAlgorithm:
     def __init__(self, 
@@ -223,9 +224,10 @@ class VoitureAlgorithm:
 
         shrinked = shrink_space(raw_lidar)
         steer, target_angle = compute_steer_from_lidar(shrinked)
-
+        target_speed = compute_speed(shrinked, target_angle)
+        
         self.steer.set_steering_angle(steer)
-        self.motor.set_speed(0.9)
+        self.motor.set_speed(target_speed)
         
         end_time = time.time()
         loop_time = end_time - start_time

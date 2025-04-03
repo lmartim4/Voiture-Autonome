@@ -10,18 +10,9 @@ from algorithm.constants import LIDAR_BAUDRATE, LIDAR_HEADING_OFFSET_DEG, LIDAR_
 
 
 class RPLidarReader(LiDarInterface):
-    """
-    Implementation of LiDarInterface that uses RPLidar in a separate process
-    to continuously read data. Call get_lidar_data() to retrieve the most recent
-    360 readings (angle in [0..359], distance in meters).
-    
-    Features auto-restart capability if the LiDAR fails.
-    """
-
     last_lidar_read = mp.Array('d', 360)
     last_lidar_update = mp.Value('d', 0.0)
     stop_event = mp.Event()
-    restart_event = mp.Event()  # New event to signal need for restart
 
     def __init__(
         self,
@@ -30,20 +21,8 @@ class RPLidarReader(LiDarInterface):
         heading_offset_deg: int = LIDAR_HEADING_OFFSET_DEG,
         fov_filter: int = LIDAR_FOV_FILTER,
         point_timeout_ms: int = LIDAR_POINT_TIMEOUT_MS,
-        sensor_name: str = "Lidar",
-        max_restart_attempts: int = 5,  # New parameter for restart limits
-        restart_delay_seconds: int = 3  # Delay between restart attempts
+        sensor_name: str = "Lidar"
     ):
-        """
-        :param port: Serial port where the LiDAR is connected.
-        :param baudrate: Baud rate to use for RPLidar.
-        :param heading_offset_deg: Offset to apply to angles (shifts the 360 array).
-        :param fov_filter: Field-of-view filter (keep data only within +/- fov_filter/2).
-        :param point_timeout_ms: How long (in ms) a point can remain valid without an update.
-        :param sensor_name: Name for logging.
-        :param max_restart_attempts: Maximum number of restart attempts before giving up.
-        :param restart_delay_seconds: Time to wait between restart attempts.
-        """
         
         # Store parameters
         self.port = port
@@ -51,14 +30,11 @@ class RPLidarReader(LiDarInterface):
         self.heading_offset_deg = heading_offset_deg
         self.fov_filter = fov_filter
         self.point_timeout_ms = point_timeout_ms
-        self.max_restart_attempts = max_restart_attempts
-        self.restart_delay_seconds = restart_delay_seconds
 
         # Prepare multiprocessing shared state
         self.last_lidar_read = mp.Array('d', 360)  # shared array of doubles
         self.last_lidar_update = mp.Value('d', 0.0)  # shared double (timestamp)
         self.stop_event = mp.Event()
-        self.restart_event = mp.Event()
         self.restart_attempts = mp.Value('i', 0)  # Count restart attempts
 
         # Prepare logger
@@ -70,11 +46,8 @@ class RPLidarReader(LiDarInterface):
         self._start_lidar_process()
 
         self._plot_process = None
-        self._watchdog_process = None
-        self._start_watchdog_process()
 
     def _start_lidar_process(self):
-        """Start the LiDAR reading process"""
         if self._lidar_process is not None and self._lidar_process.is_alive():
             self.sensor_logger.info("[LidarReader] Process already running.")
             return
@@ -89,156 +62,159 @@ class RPLidarReader(LiDarInterface):
         )
         self._lidar_process.start()
         self.sensor_logger.info("[LidarReader] Process started.")
-
-    def _start_watchdog_process(self):
-        """Start the watchdog process that monitors LiDAR and restarts if needed"""
-        if self._watchdog_process is not None and self._watchdog_process.is_alive():
-            return
-            
-        self._watchdog_process = mp.Process(
-            target=self._run_watchdog_process,
-            daemon=True
-        )
-        self._watchdog_process.start()
-        self.sensor_logger.info("[LidarReader] Watchdog process started.")
-
-    def _run_watchdog_process(self):
-        """
-        Watchdog process that monitors the LiDAR process and restarts it if needed.
-        """
-        try:
-            while not self.stop_event.is_set():
-                # Check if restart is needed
-                if self.restart_event.is_set():
-                    # Reset the restart event
-                    self.restart_event.clear()
-                    
-                    # Check restart attempts
-                    with self.restart_attempts.get_lock():
-                        if self.restart_attempts.value >= self.max_restart_attempts:
-                            self.sensor_logger.info(f"[LidarWatchdog] Max restart attempts ({self.max_restart_attempts}) reached. Giving up.")
-                            self.stop_event.set()
-                            break
-                        
-                        self.restart_attempts.value += 1
-                        attempt = self.restart_attempts.value
-                    
-                    self.sensor_logger.info(f"[LidarWatchdog] Restart attempt {attempt}/{self.max_restart_attempts}")
-                    
-                    # Wait for process to terminate if it's still running
-                    if self._lidar_process and self._lidar_process.is_alive():
-                        self._lidar_process.join(timeout=5.0)
-                        
-                    # Wait before restart
-                    self.sensor_logger.info(f"[LidarWatchdog] Waiting {self.restart_delay_seconds}s before restart...")
-                    time.sleep(self.restart_delay_seconds)
-                    
-                    # Start a new process
-                    self._start_lidar_process()
-                    
-                # Sleep to avoid CPU overuse
-                time.sleep(1.0)
-                
-        except Exception as e:
-            self.sensor_logger.info(f"[LidarWatchdog] Error: {e}")
-        finally:
-            self.sensor_logger.info("[LidarWatchdog] Watchdog process ended")
-
-    def _run_lidar_process(
-        self,
-        port: str,
-        baudrate: int
-    ):
-        """
-        Child process that continuously reads from the RPLidar device and updates
-        the shared memory array with 360 distance values.
-        """
+    
+    
+    def _run_lidar_process(self, port: str, baudrate: int):
         lidar = None
-        sensor_logger_instance = self.sensor_logger_instance  # For convenience
+        sensor_logger_instance = self.sensor_logger_instance
+        
+        while(not self.stop_event.is_set()):
+            try:
+                # Initialize the LIDAR
+                lidar = RPLidar(port, baudrate=baudrate)
+                
+                # Before connecting, make sure the serial port is clean
+                # This accesses the underlying serial connection to flush any leftover data
+                if hasattr(lidar, '_serial') and lidar._serial is not None:
+                    lidar._serial.reset_input_buffer()
+                    lidar._serial.reset_output_buffer()
+                
+                lidar.connect()
+                
+                # Additional buffer clearing after connection
+                if hasattr(lidar, '_serial'):
+                    lidar._serial.reset_input_buffer()
+                    lidar._serial.reset_output_buffer()
+                    
+                lidar.start_motor()
+                lidar.start()
+                sensor_logger_instance.logConsole("[Lidar] LIDAR started.")
 
-        try:
-            lidar = RPLidar(port, baudrate=baudrate)
-            lidar.connect()
-            lidar.start_motor()
-            lidar.start()
-            sensor_logger_instance.logConsole("[Lidar] LIDAR started.")
+                pre_filtered_distances = np.zeros(360, dtype=float)
+                last_update_times = np.zeros(360, dtype=float)
+                
+                # Initialize buffer error counter
+                buffer_errors = 0
+                max_buffer_errors = 3  # Maximum consecutive buffer errors before restart
 
-            pre_filtered_distances = np.zeros(360, dtype=float)
-            last_update_times = np.zeros(360, dtype=float)
+                for scan in lidar.iter_scans():
+                    if self.stop_event.is_set():
+                        sensor_logger_instance.logConsole("[Lidar] Stop Request")
+                        break
 
-            for scan in lidar.iter_scans():
-                if self.stop_event.is_set():
-                    sensor_logger_instance.logConsole("[Lidar] Stop Request")
+                    # Reset buffer error counter on successful scan
+                    buffer_errors = 0
+                    
+                    # Process scan data (your existing code)
+                    scan_array = np.array(scan)
+                    angles = scan_array[:, 1]
+                    distances_m = scan_array[:, 2] / 1000.0  # convert mm to meters
+
+                    # Rest of your processing code...
+                    indices = np.round(angles).astype(int)
+                    indices = np.clip(indices, 0, 359)
+                    
+                    pre_filtered_distances[indices] = distances_m
+                    last_update_times[indices] = time.time() * 1000
+                    
+                    shifted_distances = np.roll(pre_filtered_distances, self.heading_offset_deg)
+                    
+                    # Fill zeros by propagating last known reading
+                    for i in range(1, 360):
+                        if shifted_distances[i] == 0.0:
+                            shifted_distances[i] = shifted_distances[i - 1]
+                    
+                    # Apply Field of View filter
+                    half_fov = self.fov_filter / 2.0
+                    angle_array = np.arange(360)
+                    diffs = (angle_array - 0) % 360
+                    keep_mask = ((diffs <= half_fov) | (diffs >= 360 - half_fov))
+                    shifted_distances[~keep_mask] = 0.0
+                    
+                    # Apply timeout
+                    current_time = time.time() * 1000  # ms
+                    time_diffs = current_time - last_update_times
+                    expired_mask = (time_diffs > self.point_timeout_ms) & (last_update_times > 0)
+                    shifted_distances[expired_mask] = 0.0
+                    last_update_times[expired_mask] = -1.0
+                    
+                    # Log data if desired
+                    self.sensor_logger.info(shifted_distances.tolist())
+                    
+                    # Copy to shared memory
+                    with self.last_lidar_read.get_lock():
+                        for i in range(360):
+                            self.last_lidar_read[i] = shifted_distances[i]
+                        with self.last_lidar_update.get_lock():
+                            self.last_lidar_update.value = time.time()
+
+            except KeyboardInterrupt:
+                sensor_logger_instance.logConsole("[Lidar] KeyboardInterrupt detected. Stopping...")
+                self.stop_event.set()
+                
+            except ValueError as e:
+                error_str = str(e)
+                if "too many values to unpack" in error_str:
+                    buffer_errors += 1
+                    sensor_logger_instance.logConsole(f"[Lidar] Buffer unpack error ({buffer_errors}/{max_buffer_errors}): {e}")
+                    
+                    # Try to clear the buffer without full restart if possible
+                    if hasattr(lidar, '_serial') and buffer_errors < max_buffer_errors:
+                        try:
+                            sensor_logger_instance.logConsole("[Lidar] Attempting to clear buffer without restart...")
+                            lidar._serial.reset_input_buffer()
+                            time.sleep(0.2)  # Brief pause
+                            continue
+                        except Exception as clear_err:
+                            sensor_logger_instance.logConsole(f"[Lidar] Failed to clear buffer: {clear_err}")
+                            
+                    # If we've had too many consecutive buffer errors or clearing failed, break to restart
                     break
+                    
+            except RPLidarException as e:
+                error_str = str(e)
+                if "descriptor" in error_str.lower() or "buffer" in error_str.lower():
+                    buffer_errors += 1
+                    sensor_logger_instance.logConsole(f"[Lidar] Buffer-related error ({buffer_errors}/{max_buffer_errors}): {e}")
+                    
+                    # Try to clear the buffer without full restart if possible
+                    if hasattr(lidar, '_serial') and buffer_errors < max_buffer_errors:
+                        try:
+                            sensor_logger_instance.logConsole("[Lidar] Attempting to clear buffer without restart...")
+                            lidar._serial.reset_input_buffer()
+                            time.sleep(0.2)  # Brief pause
+                            continue
+                        except Exception as clear_err:
+                            sensor_logger_instance.logConsole(f"[Lidar] Failed to clear buffer: {clear_err}")
+                    
+                    # If we've had too many consecutive buffer errors or clearing failed, break to restart
+                    break
+                else:
+                    # For other RPLidar errors, log and restart
+                    sensor_logger_instance.logConsole(f"[Lidar] LIDAR error exception: {e}")
+                    break
+                    
+            except Exception as e:
+                # For any other exception, log and restart
+                sensor_logger_instance.logConsole(f"[Lidar] LIDAR error exception: {e}")
+                break
+                
+            finally:
+                if lidar is not None:
+                    sensor_logger_instance.logConsole("[Lidar] Stopping LIDAR...")
+                    try:
+                        lidar.stop()
+                        lidar.stop_motor()
+                        lidar.disconnect()
+                    except Exception as e:
+                        sensor_logger_instance.logConsole(f"[Lidar] Error stopping LIDAR: {e}")
 
-                # Convert to np.array: shape (N, 3) = (quality, angle, distance)
-                scan_array = np.array(scan)
-                angles = scan_array[:, 1]
-                distances_m = scan_array[:, 2] / 1000.0  # convert mm to meters
-
-                # Round angles to nearest int in [0..359]
-                indices = np.round(angles).astype(int)
-                indices = np.clip(indices, 0, 359)
-
-                # Update pre_filtered_distances and last_update_times
-                pre_filtered_distances[indices] = distances_m
-                last_update_times[indices] = time.time() * 1000  # store in ms
-
-                # Shift for heading offset
-                shifted_distances = np.roll(pre_filtered_distances, self.heading_offset_deg)
-
-                # Fill zeros by propagating last known reading (optional smoothing trick)
-                for i in range(1, 360):
-                    if shifted_distances[i] == 0.0:
-                        shifted_distances[i] = shifted_distances[i - 1]
-
-                # Apply Field of View filter
-                half_fov = self.fov_filter / 2.0
-                angle_array = np.arange(360)
-                diffs = (angle_array - 0) % 360
-                keep_mask = ((diffs <= half_fov) | (diffs >= 360 - half_fov))
-                shifted_distances[~keep_mask] = 0.0
-
-                # Apply timeout
-                current_time = time.time() * 1000  # ms
-                time_diffs = current_time - last_update_times
-                expired_mask = (time_diffs > self.point_timeout_ms) & (last_update_times > 0)
-                shifted_distances[expired_mask] = 0.0
-                last_update_times[expired_mask] = -1.0
-
-                # Log data if desired
-                self.sensor_logger.info(shifted_distances.tolist())
-
-                # Copy to shared memory
-                with self.last_lidar_read.get_lock():
-                    for i in range(360):
-                        self.last_lidar_read[i] = shifted_distances[i]
-                    with self.last_lidar_update.get_lock():
-                        self.last_lidar_update.value = time.time()
-
-        except KeyboardInterrupt:
-            sensor_logger_instance.logConsole("[Lidar] KeyboardInterrupt detected. Stopping...")
-            self.stop_event.set()
-        except (RPLidarException, Exception) as e:
-            sensor_logger_instance.logConsole(f"[Lidar] LIDAR error exception: {e}")
-            
-            # Instead of stopping, trigger restart if not already stopping
-            if not self.stop_event.is_set():
-                sensor_logger_instance.logConsole("[Lidar] Triggering restart...")
-                self.restart_event.set()
-            
-        finally:
-            if lidar is not None:
-                sensor_logger_instance.logConsole("[Lidar] Stopping LIDAR...")
-                try:
-                    lidar.stop()
-                    lidar.stop_motor()
-                    lidar.disconnect()
-                except Exception as e:
-                    sensor_logger_instance.logConsole(f"[Lidar] Error stopping LIDAR: {e}")
-
-            sensor_logger_instance.logConsole("[Lidar] Stopped.")
-
+                sensor_logger_instance.logConsole("[Lidar] Stopped.")
+                
+                # Add a small delay before attempting restart
+                if not self.stop_event.is_set():
+                    time.sleep(1.0)  # Longer pause between full restarts
+    
     def _plot_process_function(
         self,
         last_lidar_read: mp.Array,
@@ -293,13 +269,10 @@ class RPLidarReader(LiDarInterface):
         self.stop_event.set()
         
         if self._lidar_process and self._lidar_process.is_alive():
-            self._lidar_process.join(timeout=5.0)
-            
-        if self._watchdog_process and self._watchdog_process.is_alive():
-            self._watchdog_process.join(timeout=5.0)
-            
+            self._lidar_process.join(timeout=2.0)
+        
         if self._plot_process and self._plot_process.is_alive():
-            self._plot_process.join(timeout=5.0)
+            self._plot_process.join(timeout=2.0)
             
         self.sensor_logger_instance.logConsole("[LidarReader] All processes stopped.")
 
@@ -329,26 +302,22 @@ class RPLidarReader(LiDarInterface):
         )
         self._plot_process.start()
         self.sensor_logger.info("[LidarReader] Live plot process started.")
-        
-    def manual_restart(self):
-        """
-        Manually trigger a restart of the LiDAR process.
-        """
-        self.sensor_logger_instance.logConsole("[LidarReader] Manual restart requested")
-        # Reset restart attempts counter for manual restart
-        with self.restart_attempts.get_lock():
-            self.restart_attempts.value = 0
-        self.restart_event.set()
 
 if __name__ == "__main__":
     try:
         # Create a reader
         lidar_reader = RPLidarReader(
             port="/dev/ttyUSB0", 
-            baudrate=LIDAR_BAUDRATE,
-            max_restart_attempts=5,
-            restart_delay_seconds=3
+            baudrate=LIDAR_BAUDRATE
         )
+        
+        nonzero_count = np.count_nonzero(lidar_reader.get_lidar_data())
+        
+        while(nonzero_count < 180/2):
+            print("[Main] Waiting for lidar readings before start live plot.")
+            nonzero_count = np.count_nonzero(lidar_reader.get_lidar_data())
+            time.sleep(0.1)
+        
         lidar_reader.start_live_plot()
         
         while not lidar_reader.stop_event.is_set():
