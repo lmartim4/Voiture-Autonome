@@ -6,10 +6,9 @@ from algorithm.interfaces import *
 from algorithm.constants import HITBOX_H1, HITBOX_H2, HITBOX_W
 from algorithm.control_camera import extract_info, DetectionStatus
 from algorithm.control_direction import compute_steer_from_lidar, shrink_space
-from algorithm.control_speed import compute_speed, compute_speed2
+from algorithm.control_speed import compute_speed
 
-back_dist = 20.0
-reverse_speed = -1.2
+back_dist = 30.0
 
 class VoitureAlgorithm:
     def __init__(self, 
@@ -83,31 +82,6 @@ class VoitureAlgorithm:
             if hasattr(self, '_wheel_stopped_start_time'):
                 delattr(self, '_wheel_stopped_start_time')
                 self._collision_detected = False
-                
-    def check_too_close_to_mur(self):
-        lidar_data = self.lidar.get_lidar_data()
-        
-        # Assuming lidar_data is a 360-degree array where indices 350-359 and 0-10 
-        # represent the front of the vehicle (approximately 20 degrees field of view)
-        front_indices = list(range(350, 360)) + list(range(0, 11))
-        front_data = [lidar_data[i] for i in front_indices if lidar_data[i] > 0]  # Filter out zero/invalid readings
-        
-        # Calculate average distance in front if we have valid readings
-        if len(front_data) > 0:
-            dist_front_moyene = sum(front_data) / len(front_data)
-        else:
-            dist_front_moyene = float('inf')  # No valid readings means no obstacles detected
-        
-        # Print the front distance
-        self.console.print_to_console(f"&e&lDistance frontale: &f{dist_front_moyene:.2f} cm")
-        
-        # Define minimum safe distance threshold (in same units as lidar data)
-        min_front_lidar = 0.50  # 40 cm, adjust as needed
-        
-        # Check if we're too close to a wall and trigger reverse maneuver
-        if dist_front_moyene < min_front_lidar:
-            self.console.print_to_console(f"&c&l[WARNING] &eTrop proche du mur: &f{dist_front_moyene:.2f} cm")
-            self.voltando()
     
     def simple_marche_arrire(self):        
         avg_r, avg_g, ratio_r, ratio_g, detection_status, processing_results = extract_info(self.camera.get_camera_frame(), *self.camera.get_resolution())
@@ -116,7 +90,7 @@ class VoitureAlgorithm:
             case DetectionStatus.ONLY_GREEN:
                 if  ratio_g > 0.10:
                     self.steer.set_steering_angle(25)
-                    self.motor.set_speed(reverse_speed)
+                    self.motor.set_speed(-1.5)
                     #time.sleep(1.5)
                     
                     for _ in range(15):
@@ -135,13 +109,12 @@ class VoitureAlgorithm:
             case DetectionStatus.ONLY_RED:
                 if  ratio_r > 0.10:
                     self.steer.set_steering_angle(-25)
-                    self.motor.set_speed(reverse_speed)
+                    self.motor.set_speed(-1.5)
                     #time.sleep(1.5)
 
                     for _ in range(15):
                         ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
                         if (ultrasonic_read <= back_dist and ultrasonic_read != -1.0): 
-                            print(ultrasonic_read)
                             break
                         time.sleep(0.1)
 
@@ -156,9 +129,8 @@ class VoitureAlgorithm:
                 self.voltando()
 
     def voltando(self):
-        print("puis du coup bah voila")
         self.steer.set_steering_angle(0)
-        self.motor.set_speed(reverse_speed)
+        self.motor.set_speed(-1.5)
         #time.sleep(1.5)
 
         for _ in range(15):
@@ -167,6 +139,7 @@ class VoitureAlgorithm:
                 print(f"Sai pelo break!!! {ultrasonic_read}")
                 break
             time.sleep(0.1)
+
         self.motor.set_speed(0)
         self.motor.set_speed(0.7)
         print("VOLTANDO")
@@ -187,7 +160,6 @@ class VoitureAlgorithm:
             for _ in range(20):
                 ultrasonic_read = self.ultrasonic.get_ultrasonic_data()  
                 if (ultrasonic_read <= back_dist and ultrasonic_read != -1.0): 
-                    print(ultrasonic_read)
                     break
                 time.sleep(0.1)
 
@@ -252,15 +224,14 @@ class VoitureAlgorithm:
         
         self.detect_wheel_stopped_collision()
         
-        # if self.demi_tour():
-          # print("Reversed direction! reversing..")
-           # self.reversing_direction()
+        if self.demi_tour():
+           print("Reversed direction! reversing..")
+           self.reversing_direction()
 
         shrinked = shrink_space(raw_lidar)
         steer, target_angle = compute_steer_from_lidar(shrinked)
         target_speed = compute_speed(shrinked, target_angle)
-        self.check_too_close_to_mur()
-
+        
         self.steer.set_steering_angle(steer)
         self.motor.set_speed(target_speed)
         
