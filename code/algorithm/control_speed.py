@@ -4,8 +4,8 @@ import numpy as np
 def compute_speed(convoluted_lidar, target_angle: float):
     MIN_SPEED = 0.5  # Minimum speed for curves
     MAX_SPEED = 1.1  # Maximum speed for straight paths
-    STOP_DISTANCE = 30.0  # Distance in cm to stop completely
-    SLOW_DISTANCE = 80.0  # Distance in cm to start slowing down
+    STOP_DISTANCE = 0.30  # Distance in cm to stop completely
+    SLOW_DISTANCE = 0.80  # Distance in cm to start slowing down
     
     # Check frontal distance from LiDAR
     # Assuming front is around indices 350-359 and 0-10

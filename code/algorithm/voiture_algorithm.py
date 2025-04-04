@@ -232,7 +232,7 @@ class VoitureAlgorithm:
         self.console.print_to_console(f"&e&lDistance frontale: &f{dist_front_moyene:.2f} cm")
         
         # Define minimum safe distance threshold (in same units as lidar data)
-        min_front_lidar = 30.0  # 40 cm, adjust as needed
+        min_front_lidar = 0.30  # 40 cm, adjust as needed
         
         # Check if we're too close to a wall and trigger reverse maneuver
         if dist_front_moyene < min_front_lidar:
