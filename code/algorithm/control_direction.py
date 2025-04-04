@@ -187,3 +187,81 @@ def lerp(value: float, factor: np.ndarray) -> np.ndarray:
 
     return factor[index - 1, 1] + scale * delta[1]
 
+
+
+def improved_convolution_filter(distances, convolution_size=60):
+    """
+    Improved convolution filter with better border handling for autonomous vehicles.
+    
+    Parameters:
+    - distances: array of distance measurements from sensors
+    - FIELD_OF_VIEW_DEG: field of view in degrees
+    - convolution_size: size of the convolution kernel
+    
+    Returns:
+    - filtered_distances: processed distance measurements
+    - angles: corresponding angles for the distances
+    """
+    shift = FIELD_OF_VIEW_DEG // 2
+    
+    # Create kernel with adaptive properties
+    kernel_size = convolution_size
+    center = kernel_size // 2
+    x = np.arange(kernel_size) - center
+    
+    # Create a base Gaussian kernel
+    sigma_base = kernel_size / 8.0  # Smaller sigma for sharper base response
+    kernel_base = np.exp(-0.5 * (x / sigma_base) ** 2)
+    
+    # Add a safety margin component - wider Gaussian with higher weight at the edges
+    sigma_safety = kernel_size / 4.0
+    kernel_safety = np.exp(-0.5 * (x / sigma_safety) ** 2)
+    
+    # Bias the safety component toward the edges to detect walls early
+    edge_bias = np.abs(x) / center
+    kernel_safety *= edge_bias
+    
+    # Combine base kernel with safety kernel
+    kernel = kernel_base + kernel_safety * 2.0  # Weight the safety component more
+    
+    # Add a central peak for immediate obstacle detection
+    peak_width = 10  # Narrower peak than before
+    peak_start = center - peak_width // 2
+    peak_end = peak_start + peak_width
+    kernel[peak_start:peak_end] = 15.0  # Less extreme but still prominent
+    
+    # Normalize the kernel
+    kernel /= kernel.sum()
+    
+    # Process distance measurements
+    angles = np.arange(0, 360)
+    angles = np.roll(angles, shift)
+    distances = np.roll(distances, shift)
+    
+    # Apply weighted convolution for non-uniform treatment of distances
+    # Closer obstacles get more weight in the convolution
+    weights = 1.0 / np.maximum(distances, 0.1)  # Avoid division by zero
+    weighted_distances = distances * weights
+    
+    # Perform convolution
+    filtered_distances = convolve1d(weighted_distances, kernel, mode="wrap")
+    
+    # Normalize back
+    filtered_distances = filtered_distances / np.maximum(convolve1d(weights, kernel, mode="wrap"), 0.001)
+    
+    # Add safety buffer - reduce distances slightly to stay further from walls
+    safety_factor = 0.9  # 10% safety margin
+    filtered_distances *= safety_factor
+    
+    # Apply different handling for turning scenarios
+    # Detect if we're turning by analyzing the gradient of distances
+    gradient = np.gradient(filtered_distances)
+    turning_threshold = np.std(gradient) * 2
+    is_turning = np.max(np.abs(gradient)) > turning_threshold
+    
+    if is_turning:
+        # Apply additional safety margin during turns
+        turn_safety_factor = 0.85  # 15% extra safety during turns
+        filtered_distances *= turn_safety_factor
+    
+    return filtered_distances[:FIELD_OF_VIEW_DEG], angles[:FIELD_OF_VIEW_DEG]
