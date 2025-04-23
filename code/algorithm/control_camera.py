@@ -87,8 +87,8 @@ def calculate_color_ratios(mask_r, mask_g, width, height):
     except Exception as e:
         print(f"Error calculating color ratios: {e}")
         return 0, 0
-
-def determine_detection_status(avg_r, avg_g, ratio_r, ratio_g, min_ratio=7):
+      
+def determine_detection_status(avg_r, avg_g, ratio_r, ratio_g, min_ratio=12):
     red_detected = avg_r != -1 and ratio_r >= min_ratio
     green_detected = avg_g != -1 and ratio_g >= min_ratio
     

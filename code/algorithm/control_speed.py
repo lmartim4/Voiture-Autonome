@@ -6,7 +6,7 @@ def compute_speed(convoluted_lidar, target_angle: float):
     MAX_SPEED = 1.1  # Maximum speed for straight paths
     STOP_DISTANCE = 0.30  # Distance in cm to stop completely
     SLOW_DISTANCE = 0.80  # Distance in cm to start slowing down
-    
+   
     # Check frontal distance from LiDAR
     # Assuming front is around indices 350-359 and 0-10
     front_indices = list(range(350, 360)) + list(range(0, 11))

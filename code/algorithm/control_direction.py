@@ -97,7 +97,7 @@ def compute_angle(filtred_distances, filtred_angles, raw_lidar):
 
         if r_angle == 0 and r_dist < AVOID_CORNER_MIN_DISTANCE:
             r_angle = index
-
+    
     if l_angle == r_angle:
         delta = 0
     elif l_angle > r_angle:
@@ -148,10 +148,10 @@ def convolution_filter(distances):
     # Option 3: Simplified extreme center boost (currently in use)
     # Create a kernel with extreme center boosting
     kernel = np.ones(CONVOLUTION_SIZE)
-    center_idx = CONVOLUTION_SIZE // 2
+    center_idx = CONVOLUTION_SIZE // 2 -20
     
     # Apply sharp center peak (just 1-3 elements)
-    peak_width = 30  # Adjust based on how narrow you want the peak
+    peak_width = 35  # Adjust based on how narrow you want the peak
     peak_start = center_idx - peak_width // 2
     peak_end = peak_start + peak_width
     
