@@ -8,7 +8,7 @@ from algorithm.control_camera import extract_info, DetectionStatus
 from algorithm.control_direction import compute_steer_from_lidar, shrink_space
 from algorithm.control_speed import compute_speed
 
-back_dist = 30.0
+back_dist = 15
 
 class VoitureAlgorithm:
     def __init__(self, 
@@ -89,7 +89,7 @@ class VoitureAlgorithm:
         match (detection_status):
             case DetectionStatus.ONLY_GREEN:
                 if  ratio_g > 0.10:
-                    self.steer.set_steering_angle(25)
+                    self.steer.set_steering_angle(30)
                     self.motor.set_speed(-1.5)
                     #time.sleep(1.5)
                     
@@ -100,7 +100,7 @@ class VoitureAlgorithm:
                         time.sleep(0.1)
 
                     self.motor.set_speed(0)
-                    self.steer.set_steering_angle(-25)
+                    self.steer.set_steering_angle(-30)
                     self.motor.set_speed(0.7)
                     time.sleep(0.1)
                     print("GIRANDO")
@@ -108,7 +108,7 @@ class VoitureAlgorithm:
                     self.voltando()
             case DetectionStatus.ONLY_RED:
                 if  ratio_r > 0.10:
-                    self.steer.set_steering_angle(-25)
+                    self.steer.set_steering_angle(-30)
                     self.motor.set_speed(-1.5)
                     #time.sleep(1.5)
 
@@ -119,7 +119,7 @@ class VoitureAlgorithm:
                         time.sleep(0.1)
 
                     self.motor.set_speed(0)
-                    self.steer.set_steering_angle(25)
+                    self.steer.set_steering_angle(30)
                     self.motor.set_speed(0.7)
                     time.sleep(0.1)
                     print("GIRANDO")
@@ -153,7 +153,7 @@ class VoitureAlgorithm:
 
         if avg_left > avg_right:
             print("Espace libre à gauche, rotation vers la gauche...")
-            self.steer.set_steering_angle(+25)
+            self.steer.set_steering_angle(+30)
             self.motor.set_speed(-2.0)
             print("Rodou esquerda...")
             
@@ -164,13 +164,13 @@ class VoitureAlgorithm:
                 time.sleep(0.1)
 
             self.motor.set_speed(0)
-            self.steer.set_steering_angle(-25)
+            self.steer.set_steering_angle(-30)
             self.motor.set_speed(0.7)
             time.sleep(1.0)
             return
         else:
             print("Espace libre à droite, rotation vers la droite...")
-            self.steer.set_steering_angle(-25)
+            self.steer.set_steering_angle(-30)
             self.motor.set_speed(-2.0)
             print("Rodou direita...")
 
@@ -181,7 +181,7 @@ class VoitureAlgorithm:
                 time.sleep(0.1)
 
             self.motor.set_speed(0)
-            self.steer.set_steering_angle(+25)
+            self.steer.set_steering_angle(+30)
             self.motor.set_speed(0.7)
             time.sleep(1.0)
             return
@@ -224,9 +224,9 @@ class VoitureAlgorithm:
         
         self.detect_wheel_stopped_collision()
         
-        #if self.demi_tour():
-         # print("Reversed direction! reversing..")
-          # self.reversing_direction()
+        if self.demi_tour():
+           print("Reversed direction! reversing..")
+           self.reversing_direction()
 
         shrinked = shrink_space(raw_lidar)
         steer, target_angle = compute_steer_from_lidar(shrinked)
