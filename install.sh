@@ -1,60 +1,60 @@
 #!/bin/bash
 
-# Script de instalação principal para o projeto Voiture-Autonome
-# Autor: [Seu Nome]
-# Data: $(date +%Y-%m-%d)
+# Main installation script for Autonomous-Vehicle project
+# Author: [Your Name]
+# Date: $(date +%Y-%m-%d)
 
-# Cores para mensagens
+# Colors for messages
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
-# Função para exibir mensagens de erro e sair
+# Function to display error messages and exit
 error_exit() {
-    echo -e "${RED}ERRO: $1${NC}"
+    echo -e "${RED}ERROR: $1${NC}"
     exit 1
 }
 
-# Função para exibir mensagens de sucesso
+# Function to display success messages
 success_message() {
-    echo -e "${GREEN}SUCESSO: $1${NC}"
+    echo -e "${GREEN}SUCCESS: $1${NC}"
 }
 
-# Função para exibir mensagens de informação
+# Function to display information messages
 info_message() {
     echo -e "${YELLOW}INFO: $1${NC}"
 }
 
-# Verificando se estamos em uma Raspberry Pi
+# Checking if we are on a Raspberry Pi
 if ! grep -q "Raspberry Pi" /proc/device-tree/model 2>/dev/null; then
-    error_exit "Este script deve ser executado em uma Raspberry Pi!"
+    error_exit "This script must be executed on a Raspberry Pi!"
 fi
 
-# Verificando se o diretório do projeto existe no local correto
+# Checking if the project directory exists in the correct location
 PROJECT_DIR=~/Voiture-Autonome
 if [ ! -d "$PROJECT_DIR" ]; then
-    error_exit "Diretório do projeto não encontrado em $PROJECT_DIR! Por favor, clone o repositório primeiro."
+    error_exit "Project directory not found at $PROJECT_DIR! Please clone the repository first."
 fi
 
-# Verificando permissões de sudo
+# Checking sudo permissions
 if [ "$EUID" -ne 0 ]; then
-    info_message "Este script requer permissões de sudo para algumas operações."
+    info_message "This script requires sudo permissions for some operations."
     if ! sudo -n true 2>/dev/null; then
-        echo "Por favor, digite sua senha sudo:"
-        sudo -v || error_exit "Falha ao obter permissões de sudo!"
+        echo "Please enter your sudo password:"
+        sudo -v || error_exit "Failed to obtain sudo permissions!"
     fi
 fi
 
-# Mudando para o diretório do projeto
-cd "$PROJECT_DIR" || error_exit "Não foi possível acessar o diretório do projeto!"
+# Changing to the project directory
+cd "$PROJECT_DIR" || error_exit "Could not access the project directory!"
 
-# Verificando se o diretório de scripts existe
+# Checking if the scripts directory exists
 if [ ! -d "$PROJECT_DIR/scripts" ]; then
-    error_exit "Diretório de scripts não encontrado em $PROJECT_DIR/scripts! Verifique a estrutura do repositório."
+    error_exit "Scripts directory not found at $PROJECT_DIR/scripts! Check the repository structure."
 fi
 
-# Verificando se os scripts necessários existem
+# Checking if the necessary scripts exist
 SCRIPTS=(
     "./scripts/configure_pwm.sh"
     "./scripts/configure_udev.sh"
@@ -64,34 +64,34 @@ SCRIPTS=(
 
 for script in "${SCRIPTS[@]}"; do
     if [ ! -f "$script" ]; then
-        error_exit "Script $script não encontrado! Verifique a estrutura do repositório."
+        error_exit "Script $script not found! Check the repository structure."
     fi
 done
 
-# Tornando os scripts executáveis
-chmod +x ./scripts/*.sh || error_exit "Falha ao tornar os scripts executáveis!"
+# Making scripts executable
+chmod +x ./scripts/*.sh || error_exit "Failed to make scripts executable!"
 
-# Executando os scripts individuais na ordem correta
-info_message "Iniciando processo de instalação..."
+# Running individual scripts in the correct order
+info_message "Starting installation process..."
 
-echo "1/4 - Configurando PWM..."
-sudo "./scripts/configure_pwm.sh" || error_exit "Falha na configuração PWM!"
-success_message "Configuração PWM concluída!"
+echo "1/4 - Configuring PWM..."
+sudo "./scripts/configure_pwm.sh" || error_exit "Failed in PWM configuration!"
+success_message "PWM configuration completed!"
 
-echo "2/4 - Configurando regras udev..."
-sudo "./scripts/configure_udev.sh" || error_exit "Falha na configuração udev!"
-success_message "Configuração udev concluída!"
+echo "2/4 - Configuring udev rules..."
+sudo "./scripts/configure_udev.sh" || error_exit "Failed in udev configuration!"
+success_message "udev configuration completed!"
 
-echo "3/4 - Instalando dependências..."
-"./scripts/install_dependencies.sh" || error_exit "Falha na instalação de dependências!"
-success_message "Instalação de dependências concluída!"
+echo "3/4 - Installing dependencies..."
+"./scripts/install_dependencies.sh" || error_exit "Failed to install dependencies!"
+success_message "Dependencies installation completed!"
 
-echo "4/4 - Configurando script de inicialização rápida..."
-"./scripts/setup_bash_startup.sh" || error_exit "Falha na configuração do script de inicialização!"
-success_message "Configuração do script de inicialização concluída!"
+echo "4/4 - Setting up quick start script..."
+"./scripts/setup_bash_startup.sh" || error_exit "Failed to configure startup script!"
+success_message "Startup script configuration completed!"
 
-# Finalizando a instalação
-success_message "Instalação do projeto Voiture-Autonome concluída com sucesso!"
-info_message "Reinicie o sistema para aplicar todas as configurações: sudo reboot"
+# Finalizing installation
+success_message "Autonomous-Vehicle project installation completed successfully!"
+info_message "Restart the system to apply all configurations: sudo reboot"
 
 exit 0
