@@ -10,10 +10,11 @@ NC='\033[0m'  # No Color
 # Change to the project directory
 cd ~/Voiture-Autonome/code || { echo -e "${RED}Error: Directory not found!${NC}"; exit 1; }
 
+
 # Activate the virtual environment and check if it was successful
 if source ./venv/bin/activate; then
   echo -e "${YELLOW}=============================================${NC}"
-  echo -e "${GREEN}        Welcome to Voiture Jaune!${NC}"
+  echo -e "${GREEN}        Welcome to $(hostname)!${NC}"
   echo -e "${YELLOW}=============================================${NC}"
   echo -e "${CYAN}Current Date: ${NC}$(date)"
   echo -e "${CYAN}User:         ${NC}$(whoami)"
