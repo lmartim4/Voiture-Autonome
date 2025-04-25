@@ -29,7 +29,14 @@ if source ./venv/bin/activate; then
   history -w
 
   # Add only the three desired commands to the history (in order)
+  
   history -s "python multiplot.py"
+  history -s "python plot_steer_constants.py"
+  history -s "python interface_motor.py"
+  history -s "python interface_steer.py"
+  history -s "python interface_serial.py"
+  history -s "python interface_camera.py"
+  history -s "python interface_lidar.py"
   history -s "python calibrate.py"
   history -s "python main.py"
 else
