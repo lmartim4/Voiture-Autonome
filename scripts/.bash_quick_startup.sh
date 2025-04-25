@@ -8,8 +8,7 @@ CYAN='\033[1;36m'
 NC='\033[0m'  # No Color
 
 # Change to the project directory
-cd ~/Voiture-Autonome/code || { echo -e "${RED}Error: Directory not found!${NC}"; exit 1; }
-
+cd ~/Voiture-Autonome/code || { echo -e "${RED}Error: Directory not found!${NC}"; echo -e "${YELLOW}You might need to clone project repository and re-run install.sh!${NC}"; }
 
 # Activate the virtual environment and check if it was successful
 if source ./venv/bin/activate; then
