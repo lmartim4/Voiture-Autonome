@@ -1,6 +1,4 @@
 import numpy as np
-import cv2
-from picamera2 import Picamera2
 from abc import ABC, abstractmethod
 from typing import List, Tuple
 from enum import Enum
