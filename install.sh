@@ -1,14 +1,19 @@
 #!/bin/bash
 
 # Main installation script for Autonomous-Vehicle project
-# Author: [Your Name]
-# Date: $(date +%Y-%m-%d)
 
 # Colors for messages
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
+
+# Function to display error messages but continue execution
+error_continue() {
+    echo -e "${RED}ERROR: $1${NC}"
+    echo -e "${YELLOW}Continuing with next steps...${NC}"
+    FAILED_STEPS+=("$2")
+}
 
 # Function to display error messages and exit
 error_exit() {
@@ -25,6 +30,9 @@ success_message() {
 info_message() {
     echo -e "${YELLOW}INFO: $1${NC}"
 }
+
+# Array to track failed steps
+FAILED_STEPS=()
 
 # Checking if we are on a Raspberry Pi
 if ! grep -q "Raspberry Pi" /proc/device-tree/model 2>/dev/null; then
@@ -75,23 +83,46 @@ chmod +x ./scripts/*.sh || error_exit "Failed to make scripts executable!"
 info_message "Starting installation process..."
 
 echo "1/4 - Configuring PWM..."
-sudo "./scripts/configure_pwm.sh" || error_exit "Failed in PWM configuration!"
-success_message "PWM configuration completed!"
+if sudo "./scripts/configure_pwm.sh"; then
+    success_message "PWM configuration completed!"
+else
+    error_continue "Failed in PWM configuration!" "PWM Configuration"
+fi
 
 echo "2/4 - Configuring udev rules..."
-sudo "./scripts/configure_udev.sh" || error_exit "Failed in udev configuration!"
-success_message "udev configuration completed!"
+if sudo "./scripts/configure_udev.sh"; then
+    success_message "udev configuration completed!"
+else
+    error_continue "Failed in udev configuration!" "udev Configuration"
+fi
 
 echo "3/4 - Installing dependencies..."
-"./scripts/install_dependencies.sh" || error_exit "Failed to install dependencies!"
-success_message "Dependencies installation completed!"
+if "./scripts/install_dependencies.sh"; then
+    success_message "Dependencies installation completed!"
+else
+    error_continue "Failed to install dependencies!" "Dependencies Installation"
+fi
 
 echo "4/4 - Setting up quick start script..."
-"./scripts/setup_bash_startup.sh" || error_exit "Failed to configure startup script!"
-success_message "Startup script configuration completed!"
+if "./scripts/setup_bash_startup.sh"; then
+    success_message "Startup script configuration completed!"
+else
+    error_continue "Failed to configure startup script!" "Startup Script Configuration"
+fi
 
-# Finalizing installation
-success_message "Autonomous-Vehicle project installation completed successfully!"
+# Finalizing installation with summary of results
+echo ""
+echo "=== Installation Summary ==="
+if [ ${#FAILED_STEPS[@]} -eq 0 ]; then
+    success_message "Autonomous-Vehicle project installation completed successfully!"
+else
+    echo -e "${YELLOW}Installation completed with some errors:${NC}"
+    for step in "${FAILED_STEPS[@]}"; do
+        echo -e "  - ${RED}Failed: $step${NC}"
+    done
+    echo -e "${YELLOW}You may need to manually complete these steps or troubleshoot the issues.${NC}"
+fi
+
 info_message "Restart the system to apply all configurations: sudo reboot"
 
 exit 0
