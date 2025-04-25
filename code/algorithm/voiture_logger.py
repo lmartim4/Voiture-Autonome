@@ -1,7 +1,6 @@
 import logging
 import datetime
 import os
-import pyperclip
 import shutil
 
 NORMAL = "\33[0m"
@@ -93,10 +92,6 @@ class CentralLogger:
             self._main_logger.addHandler(console_handler) 
        
     def _setup_sensor_file_handler(self, sensor_name):
-        if sensor_name == "old":
-            pyperclip.copy(f"python old_multiplot.py \"{self._log_dir}/old.log\"")
-            self.logConsole("Multiplot command copied to clipboard\n")
-        
         file_path = os.path.join(self._log_dir, f"{sensor_name}.log")
         
         sensor_logger = logging.getLogger(f"{sensor_name}")

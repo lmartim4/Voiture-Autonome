@@ -1,11 +1,10 @@
 customtkinter==5.2.2
 matplotlib==3.10
-numpy==2.2.5
+numpy
 pandas==2.2.3
-pynput==1.7.6
-pyperclip==1.9.0
 pyserial==3.5
 rplidar-roboticia==0.9.5
 scipy==1.15.2
 opencv-python==4.11.0.86
 seaborn==0.13.2
+picamera2

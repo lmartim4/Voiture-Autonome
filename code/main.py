@@ -1,7 +1,6 @@
 import time
 import numpy as np
 import algorithm.interfaces as interfaces
-from pynput import keyboard
 
 from interface_serial import SharedMemBatteryInterface, SharedMemUltrasonicInterface, SharedMemSpeedInterface, start_serial_monitor
 from interface_lidar import RPLidarReader
@@ -17,27 +16,6 @@ from algorithm.voiture_algorithm import VoitureAlgorithm
 
 logger_instance = CentralLogger(sensor_name="main")
 logger = logger_instance.get_logger()
-
-running = False
-
-def on_press(key: keyboard.Key) -> None:
-    """
-    Callback function to handle key press events.
-
-    Args:
-        key (keyboard.Key): pressed key.
-    """
-
-    global running
-
-    if key == keyboard.Key.enter and not running:
-        running = True
-
-        print("Running...")
-        print("Press CTRL+C to stop the code")
-
-
-listener = keyboard.Listener(on_press=on_press)
 
 def main():
     try:
@@ -72,16 +50,9 @@ def main():
                         motor=I_Motor,
                         console=I_Console)
 
-        print("Press ENTER to start the code")
-
-        try:
-            listener.start()
-        except RuntimeError:
-            pass
-        
-        while(not running):
-            time.sleep(0.05)
-        
+        input("Press ENTER to start the code...\n")
+        print("Running...")
+            
         while(True):
             loop(algorithm)
             
