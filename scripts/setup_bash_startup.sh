@@ -17,8 +17,13 @@ fi
 
 if [ -f "$DEST_FILE" ]; then
     echo -e "${YELLOW}INFO: Destination file $DEST_FILE already exists!${NC}"
-    echo -e "${YELLOW}If you want to re-install factory config, you must first delete the old file.${NC}"
-    exit 0
+    read -p "Do you want to overwrite it? (y/n): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Setup canceled. Existing file was not modified.${NC}"
+        exit 0
+    fi
+    echo -e "${YELLOW}Overwriting existing file...${NC}"
 fi
 
 cp "$SOURCE_FILE" "$DEST_FILE"

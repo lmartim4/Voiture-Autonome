@@ -54,3 +54,15 @@ Text -> One that fits well with the main background color
 If you followed everything up to this point you should have a system that looks like this:
 
 ![](/docs/vnc_setup/step8.png)
+
+
+Now you can perform some tests yourself:
+
+- Check if the lidar is working properly:
+    - Use arrow up until you hit **python interface_lidar.py**
+
+- Do the same for the other interfaces. Just be carefull because the motor interface might that the car to high speeds.
+
+# Quick Debug
+
+In a daily basis its easier to debug the car by testing each interface separately. Run at least the lidar and the camera before testing the **main.py**
