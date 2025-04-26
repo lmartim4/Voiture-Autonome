@@ -45,9 +45,9 @@ sudo raspi-config
 
 Navigate to "Interface Options" -> "VNC" -> Hit Yes
 
-![](/docs/raspi_config/step1.png)
-![](/docs/raspi_config/step2.png)
-![](/docs/raspi_config/step3.png)
+![](/docs/images/raspi_config/step1.png)
+![](/docs/images/raspi_config/step2.png)
+![](/docs/images/raspi_config/step3.png)
 
 Then quit this raspi-config menu.
 

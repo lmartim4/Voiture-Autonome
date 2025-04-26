@@ -24,10 +24,10 @@ Pick the last stable version available or one of the following. Both versions we
 
 
 
-![Raspberry Pi Imager First Screen](/docs/imager/RASPI_IMAGER.png)
+![Raspberry Pi Imager First Screen](/docs/images/imager/RASPI_IMAGER.png)
 
 
-![First Config Details](/docs/imager/config1.png)
+![First Config Details](/docs/images/imager/config1.png)
 
 Make sure you put the right color in the hostname. It will be easier to debug in which raspi we are connected when both are online.
 
@@ -40,6 +40,6 @@ Password: Voiture-ENSTA
 Wireless LAN Country: FR
 ```
 
-![Second Config Details](/docs/imager/config2.png)
+![Second Config Details](/docs/images/imager/config2.png)
 
 When finished export the card. Insert into Raspi and follow [this](/docs/A_INSTALATION.md)
