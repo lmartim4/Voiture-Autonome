@@ -13,6 +13,8 @@ SSID: PIE_ENSTA
 Password: Voiture-ENSTA
 ```
 
+> If you are *struggling* or want a more detailled tutorial refer to the [Wi-Fi Setup guide](/docs/A_WIFI_SETUP.md)
+
 ## Creating the RaspiOS Image
 
 Download [Raspberry Pi Imager](https://www.raspberrypi.com/software/)
@@ -42,4 +44,4 @@ Wireless LAN Country: FR
 
 ![Second Config Details](/docs/images/imager/config2.png)
 
-When finished export the card. Insert into Raspi and follow [this](/docs/A_INSTALATION.md)
+When finished export the card. Insert into Raspi and follow [Instalation Guide](/docs/A_INSTALATION.md)

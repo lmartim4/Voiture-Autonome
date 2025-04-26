@@ -7,7 +7,7 @@ If you have followed [this](/docs/A_IMAGE_CREATOR.md) you should have a working 
 
 You will need to wait for it to boot (around one minute) and connect to your wifi's hotspot. You will then need to find its IP Address.
 
-If all goes well you will probably find a table like this
+If all goes well you will probably find a table like this in your phone's hotspot section:
 
 
 | Hostname | IP |
@@ -106,4 +106,4 @@ NOTE: You are now in a Python virtual environment
 
 It means that the installation is probably working fine!
 
-You must test the VNC now. Please refer to [this](/docs/A_VNC.md) file
+You must test the VNC now. Please refer to [VNC Guide](/docs/A_VNC.md) file
